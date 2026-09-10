@@ -29,7 +29,7 @@ async function callTool(name, args = {}) {
 before(async () => {
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cladeployer-test-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeploy-test-'));
   child = spawn(process.execPath, ['src/server.js'], {
     env: { ...process.env, PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -42,7 +42,7 @@ before(async () => {
     await sleep(100);
     if (i === 99) throw new Error(`server did not start:\n${out}`);
   }
-  client = new Client({ name: 'cladeployer-test', version: '0.0.0' });
+  client = new Client({ name: 'claudeploy-test', version: '0.0.0' });
   await client.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
 });
 
@@ -73,7 +73,7 @@ test('launch_terms reads the live protocol terms', async () => {
 
 test('preview_launch simulates a launch with a dev buy', async () => {
   const { data, isError, text } = await callTool('preview_launch', {
-    name: 'Cladeployer Test', symbol: '$ptest', description: 'never launched', devBuyEth: '0.01', creatorTaxBps: 100,
+    name: 'Claudeploy Test', symbol: '$ptest', description: 'never launched', devBuyEth: '0.01', creatorTaxBps: 100,
   });
   assert.equal(isError, false, text);
   assert.equal(data.symbol, 'PTEST');

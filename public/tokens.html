@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tokens · Cladeployer</title>
-  <meta name="description" content="Every token launched through Cladeployer, with live price, ETH raised and graduation progress from pons.">
+  <title>Tokens · Claudeploy</title>
+  <meta name="description" content="Every token launched through Claudeploy, with live price, ETH raised and graduation progress from pons.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
   <main class="wrap">
     <section class="hero" style="padding-bottom:24px">
       <div class="kicker"><i></i> Tokens</div>
-      <h1 style="font-size:clamp(34px,5vw,54px)">Launched through Cladeployer.</h1>
+      <h1 style="font-size:clamp(34px,5vw,54px)">Launched through Claudeploy.</h1>
       <p class="lead">Live from pons on <span data-fill="network">Robinhood Chain</span>. Price, ETH raised and progress toward graduation, refreshed every minute.</p>
     </section>
 
@@ -31,7 +31,7 @@
 
     <section class="section tight">
       <div id="list"><div class="empty">Loading…</div></div>
-      <p class="small muted" style="margin-top:14px">Data comes from the pons v2 factory and bonding curves. Cladeployer lists what was launched through it; it does not curate, endorse or rate tokens.</p>
+      <p class="small muted" style="margin-top:14px">Data comes from the pons v2 factory and bonding curves. Claudeploy lists what was launched through it; it does not curate, endorse or rate tokens.</p>
     </section>
   </main>
   <footer id="footer"></footer>
@@ -48,7 +48,7 @@
         document.getElementById('sMcap').textContent = fmt(totals.marketCapEth, 2);
         document.getElementById('sRaised').textContent = fmt(totals.raisedEth, 3);
         document.getElementById('sGrad').textContent = totals.graduated;
-        if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Cladeployer to Claude and be the first.</div>'; return; }
+        if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Claudeploy to Claude and be the first.</div>'; return; }
         list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr><th>Token</th><th>Price (ETH)</th><th>Market cap (ETH)</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th></tr></thead><tbody>' +
           tokens.map((t) => {
             const prog = t.info?.graduationProgress ?? 0;

@@ -7,7 +7,7 @@
 
   const nav = document.getElementById('nav');
   if (nav) nav.innerHTML = `<div class="wrap navrow">
-    <a class="brand" href="/">${MARK}<span>Cladeployer</span></a>
+    <a class="brand" href="/">${MARK}<span>Claudeploy</span></a>
     <nav>${LINKS.map(([h, t]) => `<a href="${h}" class="${path === h ? 'active' : ''}">${t}</a>`).join('')}</nav>
     <a class="btn sm" href="/docs#connect">Add to Claude</a>
   </div>`;
@@ -15,7 +15,7 @@
   const footer = document.getElementById('footer');
   if (footer) footer.innerHTML = `<div class="wrap">
     <div class="cols">
-      <div><a class="brand" href="/">${MARK}<span>Cladeployer</span></a><div class="small muted" style="margin-top:8px">Launch a token on pons by talking to Claude.</div></div>
+      <div><a class="brand" href="/">${MARK}<span>Claudeploy</span></a><div class="small muted" style="margin-top:8px">Launch a token on pons by talking to Claude.</div></div>
       <div class="links">
         ${LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}
         <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
@@ -23,7 +23,7 @@
         <span id="footSocial"></span>
       </div>
     </div>
-    <div class="fine">Cladeployer is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; Cladeployer is not affiliated with Anthropic or with pons.</div>
+    <div class="fine">Claudeploy is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; Claudeploy is not affiliated with Anthropic or with pons.</div>
   </div>`;
 
   // Dados vivos: elementos com data-fill="chave" recebem o valor de /api/terms.

@@ -206,7 +206,7 @@ export async function prepareBuy(raw) {
   const info = await chain.tokenInfo(input.token);
   if (!info) throw new UserError('this address is not a pons v2 launch on this network', 'NOT_PONS_TOKEN');
   if (info.graduated || info.phase !== 'bonding curve') {
-    throw new UserError(`${info.symbol} has left the bonding curve (${info.phase}); Cladeployer only buys on the curve`, 'GRADUATED');
+    throw new UserError(`${info.symbol} has left the bonding curve (${info.phase}); Claudeploy only buys on the curve`, 'GRADUATED');
   }
   const from = input.wallet || throwaway();
   const quoteInWei = parseEther(input.ethAmount);

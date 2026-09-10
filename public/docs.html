@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Docs · Cladeployer</title>
-  <meta name="description" content="Connect Cladeployer to Claude, the seven tools it exposes, guardrails, network and contracts, and the public API.">
+  <title>Docs · Claudeploy</title>
+  <meta name="description" content="Connect Claudeploy to Claude, the seven tools it exposes, guardrails, network and contracts, and the public API.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -33,15 +33,15 @@
       <article>
         <section id="connect">
           <h2>Connect to Claude</h2>
-          <p class="muted">Cladeployer is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer.</p>
+          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer.</p>
           <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
           <ol class="steps">
             <li><div><b>Customize → Connectors</b><p>In Claude on the web, in the desktop app, or in Cowork.</p></div></li>
-            <li><div><b>Add custom connector</b><p>Paste the URL above. Name it Cladeployer. No OAuth, no API key.</p></div></li>
-            <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure Cladeployer is on.</p></div></li>
+            <li><div><b>Add custom connector</b><p>Paste the URL above. Name it Claudeploy. No OAuth, no API key.</p></div></li>
+            <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure Claudeploy is on.</p></div></li>
           </ol>
           <h3>Which Claude plans work</h3>
-          <p class="muted">These are Claude's own subscription plans; Cladeployer has no plans and costs nothing. Claude Free (one custom connector allowed), Pro and Max can add it by URL. On Claude Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
+          <p class="muted">These are Claude's own subscription plans; Claudeploy has no plans and costs nothing. Claude Free (one custom connector allowed), Pro and Max can add it by URL. On Claude Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
         </section>
 
         <section id="prompts">
@@ -68,7 +68,7 @@
               <tr><td><code>launch_status</code></td><td>Status of a launch or buy by id. Returns the contract address once the transaction is confirmed.</td><td>No</td></tr>
               <tr><td><code>token_info</code></td><td>Price, market cap, ETH raised, graduation progress and phase for any pons v2 token.</td><td>No</td></tr>
               <tr><td><code>prepare_buy</code></td><td>Simulates a buy on a token's bonding curve and returns a signing link.</td><td>Stores the request</td></tr>
-              <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Cladeployer that are live on-chain.</td><td>No</td></tr>
+              <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Claudeploy that are live on-chain.</td><td>No</td></tr>
             </tbody>
           </table>
           <h3>Launch parameters</h3>
@@ -125,7 +125,7 @@
           <p class="muted">The signing page and this site use a small JSON API. It is read-only except for the two calls the signing page makes.</p>
           <pre>GET  /api/health              liveness
 GET  /api/terms               live pons terms, chain and contract addresses
-GET  /api/launches?limit=20   tokens launched through Cladeployer that are live
+GET  /api/launches?limit=20   tokens launched through Claudeploy that are live
 GET  /api/tokens              same list enriched with price, market cap, progress
 GET  /api/launch/:id          status of one launch or buy
 POST /api/launch/:id/bind     { wallet }  simulate from this wallet, return the unsigned tx

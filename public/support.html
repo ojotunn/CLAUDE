@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Support · Cladeployer</title>
+  <title>Support · Claudeploy</title>
   <meta name="description" content="Answers to the questions people hit while launching on pons through Claude: wallets, chains, balances, expired links, whitelists, fees, graduation.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,9 +22,9 @@
 
     <section class="section tight">
       <h2 style="font-size:24px">Connecting</h2>
-      <details><summary>Claude says it cannot see Cladeployer.</summary><p>Make sure the connector is enabled in the current chat: open the tools menu in the conversation and switch Cladeployer on. New connectors are off in chats that were started before you added them.</p></details>
+      <details><summary>Claude says it cannot see Claudeploy.</summary><p>Make sure the connector is enabled in the current chat: open the tools menu in the conversation and switch Claudeploy on. New connectors are off in chats that were started before you added them.</p></details>
       <details><summary>The connector fails to add.</summary><p>Copy the URL exactly as shown on the <a href="/docs#connect">docs page</a>, ending in <code>/mcp</code>. Team and Enterprise accounts need an organization owner to add it.</p></details>
-      <details><summary>Does Cladeployer need my API key or a login?</summary><p>No. There is no account. Claude talks to the server, and your wallet talks to the chain. That is all.</p></details>
+      <details><summary>Does Claudeploy need my API key or a login?</summary><p>No. There is no account. Claude talks to the server, and your wallet talks to the chain. That is all.</p></details>
     </section>
 
     <section class="section tight">
@@ -33,7 +33,7 @@
       <details><summary>My wallet asks to add or switch to an unknown network.</summary><p>That is Robinhood Chain (chain id <span data-fill="chainId">4663</span>). Approve it. The page supplies the official RPC and explorer; you can verify them on the <a href="/docs#network">docs page</a>.</p></details>
       <details><summary>"This wallet needs ETH on Robinhood Chain."</summary><p>The wallet you connected holds less than the launch fee plus your dev buy plus gas, on Robinhood Chain specifically. Bridge ETH to Robinhood Chain, then press <b>Re-check balance</b>.</p></details>
       <details><summary>The link expired.</summary><p>Prepared launches are valid for 24 hours because pons terms can change. Ask Claude to prepare it again; the preview takes seconds.</p></details>
-      <details><summary>"pons is only accepting launches from whitelisted wallets."</summary><p>pons can restrict launches to a whitelist. When it does, only wallets on that list can launch, through Cladeployer or anywhere else. Check <a href="https://docs.ponsfamily.com" target="_blank" rel="noopener">pons</a> for how to get on it.</p></details>
+      <details><summary>"pons is only accepting launches from whitelisted wallets."</summary><p>pons can restrict launches to a whitelist. When it does, only wallets on that list can launch, through Claudeploy or anywhere else. Check <a href="https://docs.ponsfamily.com" target="_blank" rel="noopener">pons</a> for how to get on it.</p></details>
       <details><summary>Will the contract address really be the one shown?</summary><p>Yes. pons derives it from your wallet, the pinned terms and a random salt chosen when the launch was prepared. If anything that feeds the address changed, the transaction would revert rather than deploy elsewhere.</p></details>
       <details><summary>I rejected the transaction by mistake.</summary><p>Nothing happened on-chain. Press <b>Sign &amp; launch</b> again.</p></details>
     </section>
@@ -41,9 +41,9 @@
     <section class="section tight">
       <h2 style="font-size:24px">After launch</h2>
       <details><summary>Where do the creator fees go?</summary><p>To the creator fee recipient in the launch: your wallet, unless you named another address in the chat. pons holds them in its fee escrow; claiming is done on pons, not here.</p></details>
-      <details><summary>Can I sell my dev buy?</summary><p>Yes, on pons or any wallet that can call the bonding curve. Cladeployer only prepares launches and buys.</p></details>
-      <details><summary>What is graduation?</summary><p>When a curve raises <span data-fill="grad">4.2</span> ETH, pons moves the token to a Uniswap v4 pool. From then on trades happen there. Cladeployer's buy tool stops at graduation and points you to pons.</p></details>
-      <details><summary>Can Cladeployer undo a launch?</summary><p>No. Nobody can. A token on pons is a contract on Robinhood Chain; once deployed it stays deployed. That is why the preview comes first and the signature is yours.</p></details>
+      <details><summary>Can I sell my dev buy?</summary><p>Yes, on pons or any wallet that can call the bonding curve. Claudeploy only prepares launches and buys.</p></details>
+      <details><summary>What is graduation?</summary><p>When a curve raises <span data-fill="grad">4.2</span> ETH, pons moves the token to a Uniswap v4 pool. From then on trades happen there. Claudeploy's buy tool stops at graduation and points you to pons.</p></details>
+      <details><summary>Can Claudeploy undo a launch?</summary><p>No. Nobody can. A token on pons is a contract on Robinhood Chain; once deployed it stays deployed. That is why the preview comes first and the signature is yours.</p></details>
       <details><summary>Claude reported a contract address that does not exist.</summary><p>It should never do that: the status tool only returns what the chain confirmed. If it happens, please send us the launch id and the chat, and do not trust the address.</p></details>
     </section>
 

@@ -1,4 +1,4 @@
-# Cladeployer
+# Claudeploy
 
 Lança token na pons (Robinhood Chain, pons v2) conversando com o Claude. É o
 equivalente do Brdy (ChatGPT) do lado do Claude: um **conector MCP** que o
@@ -82,7 +82,7 @@ Team/Enterprise e passar pela revisão.
 | `launch_status` | estado por id; devolve o CA quando `live` |
 | `token_info` | preço, ETH captado, progresso de graduação de qualquer token pons v2 |
 | `prepare_buy` | link para comprar na curva de um token já lançado |
-| `recent_launches` | últimos lançamentos feitos pelo Cladeployer |
+| `recent_launches` | últimos lançamentos feitos pelo Claudeploy |
 
 ## Regras embutidas
 

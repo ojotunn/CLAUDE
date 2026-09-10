@@ -54,7 +54,7 @@ export const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`)
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
 // Pagina do token na pons. {token} e substituido pelo endereco.
 export const PONS_TOKEN_URL = process.env.PONS_TOKEN_URL || 'https://www.ponsfamily.com/launchpad/{token}';
-export const APP_NAME = 'Cladeployer';
+export const APP_NAME = 'Claudeploy';
 export const VERSION = '0.1.0';
 // Link do codigo-fonte no rodape. Vazio = o site nao expoe repositorio nenhum.
 export const REPO_URL = process.env.REPO_URL || null;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How it works · Cladeployer</title>
+  <title>How it works · Claudeploy</title>
   <meta name="description" content="From a sentence in Claude to a live token on pons: add the connector, describe the token, check the preview, sign once, get the contract address back in the chat.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,7 @@
     <section class="section tight">
       <div class="card">
         <h3>1. Add the connector</h3>
-        <p class="muted">In Claude, open <b>Customize → Connectors → Add custom connector</b> and paste the Cladeployer URL. From then on Claude knows seven tools: read the pons terms, preview a launch, prepare it, check its status, look up a token, prepare a buy, list recent launches.</p>
+        <p class="muted">In Claude, open <b>Customize → Connectors → Add custom connector</b> and paste the Claudeploy URL. From then on Claude knows seven tools: read the pons terms, preview a launch, prepare it, check its status, look up a token, prepare a buy, list recent launches.</p>
         <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
       </div>
     </section>
@@ -41,7 +41,7 @@
     <section class="section tight">
       <div class="card">
         <h3>3. Check the preview</h3>
-        <p class="muted">Before anything is stored, Cladeployer runs the launch as a dry run against Robinhood Chain. The numbers come from the chain, not from a spreadsheet.</p>
+        <p class="muted">Before anything is stored, Claudeploy runs the launch as a dry run against Robinhood Chain. The numbers come from the chain, not from a spreadsheet.</p>
         <ul class="checks">
           <li><div><b>Supply and fee</b>, read live from the pons factory.</div></li>
           <li><div><b>Dev buy result:</b> how many tokens 0.05 ETH buys on a fresh curve, and what share of supply that is.</div></li>
@@ -55,13 +55,13 @@
     <section class="section tight">
       <div class="card">
         <h3>4. Sign once</h3>
-        <p class="muted">The link opens the signing page. You connect a browser wallet (MetaMask, Rabby, Phantom with EVM, or your wallet's in-app browser on mobile). Cladeployer then simulates the launch again, this time <b>from your wallet</b>, and shows:</p>
+        <p class="muted">The link opens the signing page. You connect a browser wallet (MetaMask, Rabby, Phantom with EVM, or your wallet's in-app browser on mobile). Claudeploy then simulates the launch again, this time <b>from your wallet</b>, and shows:</p>
         <ul class="checks">
           <li><div><b>The exact contract address</b> the token will have. pons derives it from your wallet, the launch terms and a random salt, so it is known before the transaction exists.</div></li>
           <li><div><b>Your balance versus the cost.</b> If the wallet is short, the page says how much ETH it needs on Robinhood Chain.</div></li>
           <li><div><b>Who earns the creator fees.</b> Your wallet, unless you named another address in the chat.</div></li>
         </ul>
-        <p class="muted" style="margin-top:14px">You press <b>Sign &amp; launch</b>. Your wallet shows one transaction: the pons launch fee plus your dev buy, sent to the pons launch-and-buy router. You approve it there. Cladeployer never sees a key.</p>
+        <p class="muted" style="margin-top:14px">You press <b>Sign &amp; launch</b>. Your wallet shows one transaction: the pons launch fee plus your dev buy, sent to the pons launch-and-buy router. You approve it there. Claudeploy never sees a key.</p>
       </div>
     </section>
 
@@ -76,15 +76,15 @@
       <h2>Under the hood</h2>
       <div class="grid c2">
         <div class="card"><h3>Simulation, not estimation</h3><p class="muted">Previews use <code>eth_call</code> with a balance override, so the chain itself computes the outcome even for a wallet that has not connected yet. The signing page repeats it from the real wallet.</p></div>
-        <div class="card"><h3>Launch and buy in one transaction</h3><p class="muted">pons cannot fold a dev buy into its factory call, so a manual launch leaves a gap of a few blocks before the creator's first buy. Cladeployer routes both legs through the pons launch-and-buy router. Your buy settles in the same transaction that creates the curve, and you are exempt from the launch-window snipe tax.</p></div>
-        <div class="card"><h3>Pinned terms</h3><p class="muted">The pons factory exposes a digest of its current economics. Cladeployer pins that digest into the transaction. If pons changes supply, fees or the graduation threshold between your preview and your signature, the transaction reverts instead of silently repricing.</p></div>
+        <div class="card"><h3>Launch and buy in one transaction</h3><p class="muted">pons cannot fold a dev buy into its factory call, so a manual launch leaves a gap of a few blocks before the creator's first buy. Claudeploy routes both legs through the pons launch-and-buy router. Your buy settles in the same transaction that creates the curve, and you are exempt from the launch-window snipe tax.</p></div>
+        <div class="card"><h3>Pinned terms</h3><p class="muted">The pons factory exposes a digest of its current economics. Claudeploy pins that digest into the transaction. If pons changes supply, fees or the graduation threshold between your preview and your signature, the transaction reverts instead of silently repricing.</p></div>
         <div class="card"><h3>Guardrails</h3><p class="muted">Dev buy capped at <span data-fill="cap">5%</span> of supply. Creator tax checked against the pons maximum (<span data-fill="maxTax">10%</span>). Whitelist checked with <code>canLaunch</code>. Slippage floor of 1% on the dev buy and 3% on curve buys. Links expire after 24 hours.</p></div>
       </div>
     </section>
 
     <section class="section tight">
       <h2>After the launch</h2>
-      <p class="muted">Claude can keep going. <b>token_info</b> reports price, ETH raised and progress toward graduation for any pons v2 token. <b>prepare_buy</b> returns a signing link to buy more while the token is still on its bonding curve. Once a token graduates to Uniswap v4, Cladeployer points you to pons instead.</p>
+      <p class="muted">Claude can keep going. <b>token_info</b> reports price, ETH raised and progress toward graduation for any pons v2 token. <b>prepare_buy</b> returns a signing link to buy more while the token is still on its bonding curve. Once a token graduates to Uniswap v4, Claudeploy points you to pons instead.</p>
       <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
         <a class="btn accent" href="/docs#connect">Add to Claude</a>
         <a class="btn ghost" href="/docs">Read the docs</a>
