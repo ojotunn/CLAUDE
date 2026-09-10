@@ -310,6 +310,30 @@ export async function recentBuyers(curve, { blocks = 20_000n, max = 20, exclude 
   return [...totals.entries()].sort((a, b) => (b[1] > a[1] ? 1 : -1)).slice(0, max).map(([address, bought]) => ({ address, bought }));
 }
 
+export const blockNumber = () => client.getBlockNumber();
+export const blockHash = async (n) => (await client.getBlock({ blockNumber: n })).hash;
+
+// Compras na curva entre dois blocos (para reagir a eventos).
+export async function curveBuysBetween(curve, fromBlock, toBlock) {
+  if (toBlock < fromBlock) return [];
+  const event = CURVE_ABI.find((i) => i.type === 'event' && i.name === 'CurveBuy');
+  try {
+    const logs = await client.getLogs({ address: curve, event, fromBlock, toBlock });
+    return logs.map((l) => ({ recipient: l.args?.recipient, quoteIn: l.args?.quoteIn ?? 0n, tokensOut: l.args?.tokensOut ?? 0n, block: l.blockNumber }));
+  } catch { return []; }
+}
+
+// Quem vendeu recentemente = mandou token de volta para a curva (Transfer -> curve).
+export async function sellersSince(token, curve, blocks = 20_000n) {
+  const latest = await client.getBlockNumber();
+  const fromBlock = latest > blocks ? latest - blocks : 0n;
+  const event = { type: 'event', name: 'Transfer', inputs: [{ indexed: true, name: 'from', type: 'address' }, { indexed: true, name: 'to', type: 'address' }, { indexed: false, name: 'value', type: 'uint256' }] };
+  try {
+    const logs = await client.getLogs({ address: token, event, args: { to: curve }, fromBlock, toBlock: latest });
+    return new Set(logs.map((l) => String(l.args?.from || '').toLowerCase()));
+  } catch { return new Set(); }
+}
+
 export const verifySignedMessage = ({ address, message, signature }) => verifyMessage({ address, message, signature }).catch(() => false);
 
 export { formatEther, parseEther, formatUnits, getAddress, ESCROW_ABI, CURVE_ABI, ERC20_ABI };

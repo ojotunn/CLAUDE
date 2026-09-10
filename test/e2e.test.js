@@ -56,7 +56,7 @@ after(async () => {
 test('MCP handshake exposes the tools', async () => {
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ['agent_status', 'attach_agent', 'launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'release_agent', 'set_agent_rules', 'token_info']);
+  assert.deepEqual(names, ['agent_status', 'ask_agent', 'attach_agent', 'launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'release_agent', 'set_agent_rules', 'token_info']);
   const preview = tools.find((t) => t.name === 'preview_launch');
   assert.ok(preview.inputSchema.properties.name, 'preview_launch schema has name');
   assert.ok(preview.inputSchema.properties.devBuyEth, 'preview_launch schema has devBuyEth');
@@ -348,7 +348,8 @@ test('agent rules: presets, custom split, chat applies before handover, proposal
   assert.throws(() => normalizeRules({ buybackPct: 80, airdropPct: 20 }), /at most/);
   assert.throws(() => normalizeRules({ preset: 'nope' }), /unknown preset/);
   const a = allocate(1_000_000n, PRESETS.generous);
-  assert.equal(a.airdrop, 600_000n);
+  assert.equal(a.airdrop, 500_000n);
+  assert.equal(a.raffle, 100_000n);
   const r = await callTool('set_agent_rules', { token: PONSDROP, preset: 'burner' });
   assert.equal(r.isError, false, r.text);
   assert.equal(r.data.applied, true, 'pending agent: applied at once');
@@ -359,4 +360,42 @@ test('agent rules: presets, custom split, chat applies before handover, proposal
   assert.equal(bad.isError, true);
   const { tools } = await client.listTools();
   assert.ok(tools.some((t) => t.name === 'set_agent_rules'));
+});
+
+test('agent extras: salary, raffle, quiet hours, telegram validation, ask without voice', async () => {
+  const { normalizeRules, allocate, PRESETS, splitText } = await import('../src/agent.js');
+  const { validTelegram } = await import('../src/x.js');
+  const { templateEvent } = await import('../src/voice.js');
+  const r = normalizeRules({ preset: 'creator', rafflePct: 10, quietHours: '22-8', minPostMin: 30, loyaltyOnly: true, dipBuyPct: 15, collectOnly: false });
+  assert.equal(r.salaryBps, 2000);
+  assert.equal(r.raffleBps, 1000);
+  assert.deepEqual(r.quietHours, { from: 22, to: 8 });
+  assert.equal(r.minPostMin, 30);
+  assert.equal(r.loyaltyOnly, true);
+  assert.equal(r.dipBuyPct, 15);
+  assert.throws(() => normalizeRules({ buybackPct: 50, airdropPct: 30, salaryPct: 20 }), /at most/);
+  assert.throws(() => normalizeRules({ quietHours: 'night' }), /quietHours/);
+  assert.throws(() => normalizeRules({ dipBuyPct: 95 }), /dipBuyPct/);
+  const a = allocate(1_000_000n, r);
+  assert.equal(a.rent + a.salary + a.buyback + a.airdrop + a.raffle + a.reserve, 1_000_000n);
+  assert.equal(a.salary, 200_000n);
+  assert.equal(a.raffle, 100_000n);
+  assert.match(splitText(PRESETS.generous ? normalizeRules({ preset: 'generous' }) : r), /raffle/);
+  assert.equal(validTelegram({ botToken: '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef', chatId: '-1001234567890' }), true);
+  assert.equal(validTelegram({ botToken: 'nope', chatId: '1' }), false);
+  assert.match(templateEvent({ symbol: 'OWL', event: { kind: 'milestone', pct: 50 } }), /50%/);
+
+  const set = await callTool('set_agent_rules', { token: PONSDROP, preset: 'creator', quietHours: '22-8' });
+  assert.equal(set.isError, false, set.text);
+  assert.match(set.text, /creator salary/);
+  assert.match(set.text, /quiet 22-8/);
+  const v = await fetch(`${base}/api/agent/${PONSDROP}`).then((x) => x.json());
+  assert.equal(v.rules.salaryBps, 2000);
+  assert.equal(v.telegramConnected, false);
+  assert.equal(v.voice, false);
+  const ask = await fetch(`${base}/api/agent/${PONSDROP}/ask`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question: 'who are you?' }) });
+  assert.equal(ask.status, 400, 'no voice in tests');
+  assert.match((await ask.json()).error, /no voice/);
+  const tg = await fetch(`${base}/api/agent/${PONSDROP}/telegram`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ botToken: 'x', chatId: 'y' }) });
+  assert.equal(tg.status, 401, 'telegram needs the creator session');
 });

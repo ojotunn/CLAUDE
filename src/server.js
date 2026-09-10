@@ -139,6 +139,10 @@ api.get('/agent/:token/login-message', (req, res) => {
 api.post('/agent/:token/login', writeLimit, async (req, res) => res.json(await agent.login({ token: tokenParam(req), ...(req.body || {}) })));
 api.post('/agent/:token/x', creatorOnly, (req, res) => res.json(agent.setX(req.params.token, req.body?.disconnect ? null : (req.body || {}))));
 api.post('/agent/:token/x/test', creatorOnly, writeLimit, async (req, res) => res.json(await agent.testX(req.params.token)));
+api.post('/agent/:token/telegram', creatorOnly, (req, res) => res.json(agent.setTelegram(req.params.token, req.body?.disconnect ? null : (req.body || {}))));
+api.post('/agent/:token/telegram/test', creatorOnly, writeLimit, async (req, res) => res.json(await agent.testTelegram(req.params.token)));
+// Pergunte ao agente: publico, mas cada pergunta custa modelo; 5 por minuto por IP.
+api.post('/agent/:token/ask', rateLimit(5, 60_000), async (req, res) => res.json(await agent.ask(tokenParam(req), req.body?.question)));
 api.post('/agent/:token/vibe', creatorOnly, (req, res) => res.json(agent.setVibe(req.params.token, req.body?.vibe)));
 api.post('/agent/:token/rules', creatorOnly, (req, res) => res.json(req.body?.applyPending ? agent.applyPendingRules(req.params.token) : agent.setRules(req.params.token, req.body || {})));
 api.post('/agent/:token/avatar', creatorOnly, express.raw({ type: 'image/*', limit: '450kb' }), (req, res) => {

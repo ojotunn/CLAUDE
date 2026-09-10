@@ -35,3 +35,16 @@ export async function postTweet(creds, text) {
 }
 
 export const validCreds = (c) => !!(c && c.apiKey && c.apiSecret && c.accessToken && c.accessSecret);
+
+// Telegram: bot do criador + id do canal/grupo. Bot API simples, sem assinatura.
+export const validTelegram = (c) => !!(c && /^\d+:[A-Za-z0-9_-]{20,}$/.test(c.botToken || '') && /^-?\d+$|^@[A-Za-z0-9_]{5,}$/.test(c.chatId || ''));
+
+export async function postTelegram({ botToken, chatId }, text) {
+  const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.ok === false) throw new Error(body?.description || `Telegram API ${res.status}`);
+  return { id: body?.result?.message_id ?? null };
+}
