@@ -17,15 +17,24 @@ export class UserError extends Error {
 
 // ---------------------------------------------------------------------------
 // Validacao do pedido de lancamento.
+// Texto que vai para a chain e volta para o chat: sem caracteres de controle.
+// (montada por codigo de caractere de proposito: controles C0/C1, zero-width,
+// marcas bidi e BOM; sem escapes no fonte)
+const ch = (c) => String.fromCharCode(c);
+export const CONTROL_CHARS = new RegExp(
+  '[' + ch(0) + '-' + ch(31) + ch(127) + '-' + ch(159) + ch(0x200b) + '-' + ch(0x200f)
+  + ch(0x2028) + '-' + ch(0x202e) + ch(0x2060) + '-' + ch(0x2064) + ch(0xfeff) + ']', 'g');
+const clean = (s) => String(s).replace(CONTROL_CHARS, '').trim();
 const address = z.string().trim().refine((v) => isAddress(v), 'invalid EVM address').transform((v) => getAddress(v));
 const ethAmount = z.union([z.string(), z.number()])
   .transform((v) => String(v).trim().replace(/\s*eth$/i, ''))
-  .refine((v) => /^\d+(\.\d{1,18})?$/.test(v), 'ETH amount must be a decimal number like 0.05');
-const text = (max) => z.string().trim().max(max).default('');
+  .refine((v) => /^\d+(\.\d{1,18})?$/.test(v), 'ETH amount must be a decimal number like 0.05')
+  .refine((v) => Number(v) <= 1000, 'ETH amount is too large');
+const text = (max) => z.string().transform(clean).pipe(z.string().max(max)).default('');
 
 export const LaunchInput = z.object({
-  name: z.string().trim().min(1, 'name is required').max(40),
-  symbol: z.string().trim().min(1, 'ticker is required').max(12).transform((s) => s.replace(/^\$/, '').toUpperCase()),
+  name: z.string().transform(clean).pipe(z.string().min(1, 'name is required').max(40)),
+  symbol: z.string().transform(clean).pipe(z.string().min(1, 'ticker is required').max(12)).transform((s) => s.replace(/^\$/, '').toUpperCase()),
   description: text(600),
   logo: text(300),
   socials: z.object({
@@ -262,7 +271,8 @@ export async function bind(id, walletRaw) {
     const terms = await chain.protocolTerms({ fresh: true });
     if (!(await chain.canLaunch(wallet))) throw new UserError('pons is only accepting launches from whitelisted wallets and this wallet is not on the list', 'NOT_WHITELISTED');
     if (terms.economics !== rec.terms.economics) {
-      rec.warnings = [...(rec.warnings || []), 'pons updated its launch terms since the preview; this launch is pinned to the current terms'];
+      const note = 'pons updated its launch terms since the preview; this launch is pinned to the current terms';
+      if (!(rec.warnings || []).includes(note)) rec.warnings = [...(rec.warnings || []), note];
       rec.terms = { launchFeeEth: terms.launchFeeEth, supply: terms.supplyTokens, economics: terms.economics };
     }
     const params = {
@@ -331,15 +341,48 @@ export async function submitted(id, hash) {
   return publicRecord(rec);
 }
 
+// O hash chega de quem tem o link, sem autenticacao. Antes de acreditar nele,
+// o observador confere que a transacao e EXATAMENTE a que este servidor montou
+// (mesmo remetente, destino, calldata e valor). Sem isso, qualquer um poderia
+// colar o hash do lancamento de outra pessoa e aparecer no feed como criador.
 const watching = new Set();
+const MAX_WATCHERS = 50;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const eq = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+
+function fail(rec, error) {
+  rec.status = 'failed';
+  rec.error = error;
+  launches.put(rec);
+  console.log(`[launch] ${rec.id} failed: ${error}`);
+}
+
 function watch(rec) {
   if (watching.has(rec.id)) return;
+  if (watching.size >= MAX_WATCHERS) return; // resumeWatchers volta a tentar depois
   watching.add(rec.id);
-  chain.waitForReceipt(rec.txHash).then((r) => {
-    if (!r.ok) {
-      rec.status = 'failed';
-      rec.error = 'the transaction reverted on-chain';
-    } else if (rec.kind === 'launch') {
+  (async () => {
+    // 1) localizar a transacao (a carteira acabou de transmitir; pode levar segundos)
+    let tx = null;
+    for (let i = 0; i < 45 && !tx; i++) {
+      tx = await chain.getTransaction(rec.txHash);
+      if (!tx) await sleep(4_000);
+    }
+    if (!tx) {
+      rec.error = 'the transaction has not been seen on the network yet';
+      if (Date.parse(rec.expiresAt) < Date.now()) return fail(rec, 'the transaction never reached the network');
+      launches.put(rec);
+      return;
+    }
+    // 2) conferir que e a nossa
+    const same = eq(tx.from, rec.wallet) && eq(tx.to, rec.tx.to)
+      && eq(tx.input, rec.tx.data) && BigInt(tx.value ?? 0) === BigInt(rec.tx.value);
+    if (!same) return fail(rec, 'the submitted transaction is not the one prepared for this link');
+    // 3) esperar o recibo
+    const r = await chain.waitForReceipt(rec.txHash);
+    if (!r.ok) return fail(rec, 'the transaction reverted on-chain');
+    if (rec.kind === 'launch') {
+      if (!r.token) return fail(rec, 'the transaction confirmed but no pons launch event was found');
       rec.status = 'live';
       rec.token = r.token;
       rec.curve = r.curve;
@@ -348,12 +391,13 @@ function watch(rec) {
       rec.status = 'done';
       rec.tokensOut = tokensStr(r.tokensOut);
     }
+    rec.error = null;
     rec.confirmedAt = new Date().toISOString();
     rec.blockNumber = r.blockNumber.toString();
     launches.put(rec);
     console.log(`[launch] ${rec.id} ${rec.status}${rec.token ? ` token=${rec.token}` : ''}`);
-  }).catch((e) => {
-    rec.error = `still waiting for confirmation: ${String(e.shortMessage || e.message).split('\n')[0]}`;
+  })().catch((e) => {
+    rec.error = `still waiting for confirmation: ${String(e.shortMessage || e.message).split('\n')[0].slice(0, 160)}`;
     launches.put(rec);
     console.error(`[launch] ${rec.id} watch error: ${rec.error}`);
   }).finally(() => watching.delete(rec.id));
@@ -361,6 +405,24 @@ function watch(rec) {
 
 export function resumeWatchers() {
   for (const rec of launches.list((r) => r.status === 'submitted' && r.txHash)) watch(rec);
+}
+
+// Poda: pedidos nunca assinados somem um dia depois de expirar; o total de
+// pedidos abertos tem teto, para ninguem encher o disco criando links.
+const OPEN = new Set(['awaiting_wallet', 'needs_funds', 'ready', 'expired']);
+const MAX_OPEN = Number(process.env.MAX_OPEN_LAUNCHES || 1000);
+export function prune() {
+  const now = Date.now();
+  let removed = 0;
+  for (const r of launches.list()) {
+    const age = now - Date.parse(r.createdAt);
+    if (OPEN.has(r.status) && age > LIMITS.launchTtlMs + 24 * 3600 * 1000) { launches.remove(r.id); removed++; }
+    else if (r.status === 'submitted' && age > 3 * 24 * 3600 * 1000) { r.status = 'failed'; r.error = 'never confirmed'; }
+  }
+  const open = launches.list((r) => OPEN.has(r.status)).sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  while (open.length > MAX_OPEN) { launches.remove(open.shift().id); removed++; }
+  if (removed) launches.save();
+  return removed;
 }
 
 // ---------------------------------------------------------------------------

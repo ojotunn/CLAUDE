@@ -178,6 +178,8 @@ export function explainRevert(error) {
 
 // ---------------------------------------------------------------------------
 // Acompanhamento da transacao assinada.
+export const getTransaction = (hash) => client.getTransaction({ hash }).catch(() => null);
+
 export async function waitForReceipt(hash) {
   const receipt = await client.waitForTransactionReceipt({ hash, timeout: 15 * 60_000, pollingInterval: 2_000 });
   const launched = parseEventLogs({ abi: FACTORY_ABI, eventName: 'TokenLaunched', logs: receipt.logs, strict: false })[0];

@@ -38,5 +38,10 @@ export class Store {
 
   put(item) { this.items.set(item.id, item); this.save(); return item; }
 
+  // Remove sem gravar; quem poda em lote chama save() no fim.
+  remove(id) { return this.items.delete(id); }
+
+  get size() { return this.items.size; }
+
   list(filter = () => true) { return [...this.items.values()].filter(filter); }
 }

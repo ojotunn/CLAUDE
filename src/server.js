@@ -31,17 +31,29 @@ if (CANONICAL_HOST) {
   });
 }
 
-// Limite simples por IP: o endpoint e publico e cada chamada bate na RPC.
-const hits = new Map();
+// Cabecalhos de seguranca. A pagina de assinatura nunca pode ser embutida em
+// iframe de terceiros (clickjacking sobre o botao de assinar).
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+// Limite por IP, um balde por limitador. O endpoint e publico e cada chamada
+// bate na RPC, entao o que escreve ou simula tem teto mais baixo.
 function rateLimit(max, windowMs) {
+  const hits = new Map();
   return (req, res, next) => {
     const now = Date.now();
-    const key = `${req.ip}|${req.path.split('/')[1]}`;
-    const entry = hits.get(key) || { count: 0, reset: now + windowMs };
+    const entry = hits.get(req.ip) || { count: 0, reset: now + windowMs };
     if (now > entry.reset) { entry.count = 0; entry.reset = now + windowMs; }
     entry.count++;
-    hits.set(key, entry);
-    if (hits.size > 10_000) hits.clear();
+    hits.set(req.ip, entry);
+    if (hits.size > 20_000) hits.clear();
     if (entry.count > max) return res.status(429).json({ error: 'too many requests, slow down' });
     next();
   };
@@ -49,7 +61,7 @@ function rateLimit(max, windowMs) {
 
 // ---------------------------------------------------------------------------
 // MCP (Streamable HTTP, sem sessao): um servidor novo por requisicao.
-app.post('/mcp', rateLimit(120, 60_000), async (req, res) => {
+app.post('/mcp', rateLimit(60, 60_000), async (req, res) => {
   const server = createMcpServer();
   try {
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
@@ -115,8 +127,9 @@ api.get('/tokens', async (req, res) => {
   res.json({ tokens, totals });
 });
 api.get('/launch/:id', (req, res) => res.json(launches.status(req.params.id)));
-api.post('/launch/:id/bind', async (req, res) => res.json(await launches.bind(req.params.id, req.body?.wallet)));
-api.post('/launch/:id/tx', async (req, res) => res.json(await launches.submitted(req.params.id, req.body?.hash)));
+const writeLimit = rateLimit(20, 60_000);
+api.post('/launch/:id/bind', writeLimit, async (req, res) => res.json(await launches.bind(req.params.id, req.body?.wallet)));
+api.post('/launch/:id/tx', writeLimit, async (req, res) => res.json(await launches.submitted(req.params.id, req.body?.hash)));
 
 app.use('/api', api);
 
@@ -136,7 +149,11 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'internal error' });
 });
 
+launches.prune();
 launches.resumeWatchers();
+// Poda de hora em hora; observadores que ficaram de fora (teto) voltam a cada 5 min.
+setInterval(() => { try { launches.prune(); } catch (e) { console.error('[prune]', e); } }, 3600_000).unref();
+setInterval(() => { try { launches.resumeWatchers(); } catch (e) { console.error('[watch]', e); } }, 300_000).unref();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`${APP_NAME} ${VERSION} on ${PUBLIC_URL} (${CHAIN.name}, chain ${CHAIN.id})`);

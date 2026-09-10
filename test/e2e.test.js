@@ -212,3 +212,48 @@ test('site pages and enriched token feed are served', async () => {
   assert.equal(terms.mcpUrl, `${base}/mcp`);
   assert.ok('links' in terms);
 });
+
+test('a submitted hash that is not our transaction is rejected by the watcher', async () => {
+  // pega o hash de uma transacao real qualquer da chain
+  const rpc = async (method, params) => (await fetch('https://rpc.mainnet.chain.robinhood.com', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+  }).then((r) => r.json())).result;
+  let hash = null;
+  let n = BigInt(await rpc('eth_blockNumber', []));
+  for (let i = 0; i < 30 && !hash; i++, n--) {
+    const b = await rpc('eth_getBlockByNumber', [`0x${n.toString(16)}`, false]);
+    hash = b?.transactions?.[0] ?? null;
+  }
+  assert.ok(hash, 'found a real transaction hash');
+
+  const { data } = await callTool('prepare_launch', { name: 'Spoof', symbol: 'SPF' });
+  const wallet = `0x${crypto.randomBytes(20).toString('hex')}`;
+  await fetch(`${base}/api/launch/${data.id}/bind`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet }) });
+  const sub = await fetch(`${base}/api/launch/${data.id}/tx`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hash }) });
+  assert.equal(sub.status, 200);
+  let rec;
+  for (let i = 0; i < 30; i++) {
+    rec = await fetch(`${base}/api/launch/${data.id}`).then((r) => r.json());
+    if (rec.status === 'failed') break;
+    await sleep(1000);
+  }
+  assert.equal(rec.status, 'failed');
+  assert.match(rec.error, /not the one prepared/);
+  assert.equal(rec.token, null);
+  const { launches } = await fetch(`${base}/api/launches`).then((r) => r.json());
+  assert.deepEqual(launches, [], 'spoofed launch never reaches the public feed');
+});
+
+test('security headers and write rate limit are in place', async () => {
+  const r = await fetch(`${base}/l/whatever`);
+  assert.equal(r.headers.get('x-frame-options'), 'DENY');
+  assert.match(r.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  const big = await callTool('preview_launch', { name: 'Huge', symbol: 'HUGE', devBuyEth: '5000' });
+  assert.equal(big.isError, true);
+  assert.match(big.text, /too large/);
+  const ctrl = await callTool('preview_launch', { name: 'Bad\u0000Name\u200b', symbol: 'ok' });
+  assert.equal(ctrl.isError, false, ctrl.text);
+  assert.equal(ctrl.data.name, 'BadName');
+});
