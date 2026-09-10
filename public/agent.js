@@ -98,7 +98,7 @@
       <div class="stat"><div class="v">${fmt(a.stats.airdroppedTokens, 0)}</div><div class="k">$${esc(a.symbol)} airdropped</div></div>
       <div class="stat"><div class="v">${a.stats.cycles}</div><div class="k">cycles run</div></div>
     </div>
-    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${a.rules.treasury ? `${a.rules.rentBps / 100}% rent, ` : ''}${a.rules.buybackBps / 100}% buy back and burn, ${a.rules.airdropBps / 100}% airdrop to recent buyers, the rest stays as reserve. No approvals, no caps. The agent can only talk to pons, the burn address, holders and the creator.</p>`;
+    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${a.rules.treasury ? `${a.rules.rentBps / 100}% rent, ` : ''}${a.rules.buybackBps / 100}% buy back and burn, ${a.rules.airdropBps / 100}% airdrop to recent buyers, the rest stays as reserve. No approvals, no caps. The agent can only talk to pons, the burn address, holders and the creator.${a.pendingRules ? ` <b>A new split was proposed from Claude and waits for the creator to apply it.</b>` : ''}</p>`;
 
     h += `<h3 style="margin:26px 0 10px">What it did</h3><div class="feed">`;
     if (!a.log.length) h += `<div class="empty">Nothing yet. The first cycle runs when fees arrive.</div>`;
@@ -128,6 +128,17 @@
           <input type="file" id="avatarFile" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
           <button class="sm ghost" id="pickAvatar" ${busy ? 'disabled' : ''}>Upload image</button>
         </div>
+        <label>What it does with its fees</label>
+        ${a.pendingRules ? `<div class="notice warn">Proposed from Claude: ${a.pendingRules.buybackBps / 100}% buy back &amp; burn, ${a.pendingRules.airdropBps / 100}% airdrop. <button class="sm" id="applyRules" ${busy ? 'disabled' : ''} style="margin-left:8px">Apply</button></div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${Object.entries(a.presets || {}).map(([k, p]) => `<button class="sm ghost" data-preset="${k}" ${busy ? 'disabled' : ''}>${k} ${p.buybackBps / 100}/${p.airdropBps / 100}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <span class="sub">buy back &amp; burn</span><input type="text" id="rBuy" value="${a.rules.buybackBps / 100}" style="width:70px" inputmode="decimal">%
+          <span class="sub">airdrop</span><input type="text" id="rAir" value="${a.rules.airdropBps / 100}" style="width:70px" inputmode="decimal">%
+          <span class="sub">rent ${a.rules.rentBps / 100}% · reserve gets the rest</span>
+          <button class="sm ghost" id="saveRules" ${busy ? 'disabled' : ''}>Save split</button>
+        </div>
         <label>Personality (one line, used in posts)</label>
         <div style="display:flex;gap:8px"><input type="text" id="vibe" value="${esc(a.vibe || '')}" maxlength="200" style="flex:1"><button class="sm ghost" id="saveVibe" ${busy ? 'disabled' : ''}>Save</button></div>
         <label>X (Twitter) with your own API keys ${a.xConnected ? '<span class="chip">connected</span>' : ''}</label>
@@ -153,6 +164,9 @@
     on('login', login);
     on('logout', () => { session = null; try { localStorage.removeItem(`cd-session-${token.toLowerCase()}`); } catch {} render(); });
     on('saveVibe', () => act('Personality saved.', () => api(`/api/agent/${token}/vibe`, { method: 'POST', json: { vibe: document.getElementById('vibe').value } })));
+    on('saveRules', () => act('Split saved.', () => api(`/api/agent/${token}/rules`, { method: 'POST', json: { buybackPct: Number(document.getElementById('rBuy').value), airdropPct: Number(document.getElementById('rAir').value) } })));
+    on('applyRules', () => act('Proposed split applied.', () => api(`/api/agent/${token}/rules`, { method: 'POST', json: { applyPending: true } })));
+    app.querySelectorAll('button[data-preset]').forEach((b) => { b.onclick = () => act(`Preset "${b.dataset.preset}" applied.`, () => api(`/api/agent/${token}/rules`, { method: 'POST', json: { preset: b.dataset.preset } })); });
     on('saveAvatarUrl', () => act('Picture saved.', () => api(`/api/agent/${token}/avatar`, { method: 'POST', json: { url: document.getElementById('avatarUrl').value } })));
     on('pickAvatar', () => document.getElementById('avatarFile').click());
     const file = document.getElementById('avatarFile');

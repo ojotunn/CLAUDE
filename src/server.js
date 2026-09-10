@@ -140,6 +140,7 @@ api.post('/agent/:token/login', writeLimit, async (req, res) => res.json(await a
 api.post('/agent/:token/x', creatorOnly, (req, res) => res.json(agent.setX(req.params.token, req.body?.disconnect ? null : (req.body || {}))));
 api.post('/agent/:token/x/test', creatorOnly, writeLimit, async (req, res) => res.json(await agent.testX(req.params.token)));
 api.post('/agent/:token/vibe', creatorOnly, (req, res) => res.json(agent.setVibe(req.params.token, req.body?.vibe)));
+api.post('/agent/:token/rules', creatorOnly, (req, res) => res.json(req.body?.applyPending ? agent.applyPendingRules(req.params.token) : agent.setRules(req.params.token, req.body || {})));
 api.post('/agent/:token/avatar', creatorOnly, express.raw({ type: 'image/*', limit: '450kb' }), (req, res) => {
   if (Buffer.isBuffer(req.body) && req.body.length) return res.json(agent.setAvatar(req.params.token, { bytes: req.body }));
   res.json(agent.setAvatar(req.params.token, { url: req.body?.url }));

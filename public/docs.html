@@ -71,6 +71,7 @@
               <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Claudeploy that are live on-chain.</td><td>No</td></tr>
               <tr><td><code>attach_agent</code></td><td>Creates an agent wallet for a live token and returns the link where the creator signs the creator-fee handover. Optional one-line personality and profile picture URL.</td><td>Creates the agent</td></tr>
               <tr><td><code>agent_status</code></td><td>Balance, pending fees, totals, last cycles and posts of a token's agent.</td><td>No</td></tr>
+              <tr><td><code>set_agent_rules</code></td><td>What the agent does with its fees: a preset (balanced, burner, generous, saver) or custom buy-back and airdrop percentages. Applies at once before the handover; afterwards it is a proposal the creator confirms on the agent page.</td><td>Stores the rules</td></tr>
               <tr><td><code>release_agent</code></td><td>How the creator takes the fees back: a signature on the agent page.</td><td>No</td></tr>
             </tbody>
           </table>

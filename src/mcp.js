@@ -148,6 +148,9 @@ export function createMcpServer() {
       token: z.string().describe('Token contract address (0x...)'),
       vibe: z.string().optional().describe('One line of personality for the agent\'s posts, e.g. "dry humor, night owl energy"'),
       avatar: z.string().optional().describe('https URL of a profile picture for the agent (optional; the creator can also upload one on the agent page)'),
+      preset: z.string().optional().describe('How it spends its fees: "balanced" (50% buy back & burn, 25% airdrop), "burner" (80/10), "generous" (20/60), "saver" (20/10). Default balanced.'),
+      buybackPct: z.number().optional().describe('Custom: percent of collected fees used to buy back and burn (0-100)'),
+      airdropPct: z.number().optional().describe('Custom: percent of collected fees used to buy and airdrop recent buyers (0-100). buyback + airdrop must leave room for the 10% rent; the rest stays as reserve.'),
     },
   }, run(async (a) => {
     const r = await agent.attach(stripUndefined(a), launches.prepareHandover);
@@ -155,6 +158,23 @@ export function createMcpServer() {
       ? (r.url ? `This token already has an agent waiting for the handover signature: ${r.url}` : `This token already has an active agent: ${r.agent.page}`)
       : `Agent wallet created: ${r.agent.agent}. Send the creator this link to sign the fee handover: ${r.url}. Agent page: ${r.agent.page}`;
     return ok({ agent: r.agent.agent, status: r.agent.status, handoverUrl: r.url, page: r.agent.page, rules: r.agent.rules }, text);
+  }));
+
+  server.registerTool('set_agent_rules', {
+    title: 'Change what an agent does with its fees',
+    description: 'Sets the agent\'s split: a preset ("balanced", "burner", "generous", "saver") or custom buybackPct / airdropPct; the rest stays as reserve. Before the fee handover is signed the change applies at once. After that it is stored as a proposal the creator confirms on the agent page with a wallet signature (no gas), because this tool has no login.',
+    inputSchema: {
+      token: z.string().describe('Token contract address (0x...)'),
+      preset: z.string().optional().describe('"balanced", "burner", "generous" or "saver"'),
+      buybackPct: z.number().optional().describe('Percent of fees to buy back and burn (0-100)'),
+      airdropPct: z.number().optional().describe('Percent of fees to buy and airdrop recent buyers (0-100)'),
+    },
+  }, run(async (a) => {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(a.token || '')) throw new launches.UserError('token must be a 0x address', 'INVALID_INPUT');
+    const r = agent.proposeRules(a.token, stripUndefined(a));
+    const split = `${r.rules.buybackBps / 100}% buy back & burn, ${r.rules.airdropBps / 100}% airdrop, ${r.rules.rentBps / 100}% rent, ${(10_000 - r.rules.buybackBps - r.rules.airdropBps - r.rules.rentBps) / 100}% reserve`;
+    return ok({ applied: r.applied, rules: r.rules, page: r.view.page },
+      r.applied ? `Rules set: ${split}.` : `Proposed: ${split}. The creator confirms it on ${r.view.page} (Manage as creator, then "Apply"). Until then the current split stays.`);
   }));
 
   server.registerTool('agent_status', {

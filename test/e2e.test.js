@@ -56,7 +56,7 @@ after(async () => {
 test('MCP handshake exposes the tools', async () => {
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ['agent_status', 'attach_agent', 'launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'release_agent', 'token_info']);
+  assert.deepEqual(names, ['agent_status', 'attach_agent', 'launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'release_agent', 'set_agent_rules', 'token_info']);
   const preview = tools.find((t) => t.name === 'preview_launch');
   assert.ok(preview.inputSchema.properties.name, 'preview_launch schema has name');
   assert.ok(preview.inputSchema.properties.devBuyEth, 'preview_launch schema has devBuyEth');
@@ -339,4 +339,24 @@ test('agent page and public API expose no secrets; creator endpoints need a sign
   assert.match(r.text, /Manage/);
   const { tokens } = await fetch(`${base}/api/tokens`).then((x) => x.json());
   assert.deepEqual(tokens, []);
+});
+
+test('agent rules: presets, custom split, chat applies before handover, proposal after', async () => {
+  const { normalizeRules, allocate, PRESETS } = await import('../src/agent.js');
+  assert.deepEqual(normalizeRules({ preset: 'burner' }).buybackBps, 8000);
+  assert.equal(normalizeRules({ buybackPct: 30, airdropPct: 40 }).airdropBps, 4000);
+  assert.throws(() => normalizeRules({ buybackPct: 80, airdropPct: 20 }), /at most/);
+  assert.throws(() => normalizeRules({ preset: 'nope' }), /unknown preset/);
+  const a = allocate(1_000_000n, PRESETS.generous);
+  assert.equal(a.airdrop, 600_000n);
+  const r = await callTool('set_agent_rules', { token: PONSDROP, preset: 'burner' });
+  assert.equal(r.isError, false, r.text);
+  assert.equal(r.data.applied, true, 'pending agent: applied at once');
+  const v = await fetch(`${base}/api/agent/${PONSDROP}`).then((x) => x.json());
+  assert.equal(v.rules.buybackBps, 8000);
+  assert.equal(v.pendingRules, null);
+  const bad = await callTool('set_agent_rules', { token: PONSDROP, buybackPct: 95 });
+  assert.equal(bad.isError, true);
+  const { tools } = await client.listTools();
+  assert.ok(tools.some((t) => t.name === 'set_agent_rules'));
 });

@@ -37,10 +37,41 @@ const addEth = (a, b) => formatEther(parseEther(a || '0') + b);
 const addNum = (a, b) => (Number(a || 0) + Number(b)).toString();
 const now = () => new Date().toISOString();
 
-export function allocate(budget) {
-  const rent = TREASURY ? (budget * BigInt(RULES.rentBps)) / 10_000n : 0n;
-  const buyback = (budget * BigInt(RULES.buybackBps)) / 10_000n;
-  const airdrop = (budget * BigInt(RULES.airdropBps)) / 10_000n;
+// Modos prontos: a pessoa escolhe um nome ou da os percentuais. O aluguel e
+// fixo e fica fora da conta; o que sobra vira reserva.
+export const PRESETS = {
+  balanced: { buybackBps: 5000, airdropBps: 2500 },
+  burner: { buybackBps: 8000, airdropBps: 1000 },
+  generous: { buybackBps: 2000, airdropBps: 6000 },
+  saver: { buybackBps: 2000, airdropBps: 1000 },
+};
+
+export function normalizeRules({ preset, buybackPct, airdropPct } = {}, base = RULES) {
+  let buybackBps = base.buybackBps, airdropBps = base.airdropBps;
+  if (preset != null) {
+    const p = PRESETS[String(preset).toLowerCase()];
+    if (!p) throw new UserError(`unknown preset; use one of ${Object.keys(PRESETS).join(', ')}`, 'INVALID_INPUT');
+    ({ buybackBps, airdropBps } = p);
+  }
+  const pct = (v, label) => {
+    if (v == null) return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > 100) throw new UserError(`${label} must be a percentage between 0 and 100`, 'INVALID_INPUT');
+    return Math.round(n * 100);
+  };
+  const b = pct(buybackPct, 'buybackPct'), a = pct(airdropPct, 'airdropPct');
+  if (b != null) buybackBps = b;
+  if (a != null) airdropBps = a;
+  if (buybackBps + airdropBps + RULES.rentBps > 10_000) {
+    throw new UserError(`buyback + airdrop can be at most ${(10_000 - RULES.rentBps) / 100}% (the rest covers rent and gas reserve)`, 'INVALID_INPUT');
+  }
+  return { rentBps: RULES.rentBps, buybackBps, airdropBps, treasury: !!TREASURY };
+}
+
+export function allocate(budget, rules = RULES) {
+  const rent = TREASURY ? (budget * BigInt(rules.rentBps ?? RULES.rentBps)) / 10_000n : 0n;
+  const buyback = (budget * BigInt(rules.buybackBps)) / 10_000n;
+  const airdrop = (budget * BigInt(rules.airdropBps)) / 10_000n;
   return { rent, buyback, airdrop, reserve: budget - rent - buyback - airdrop };
 }
 
@@ -57,7 +88,7 @@ const cleanAvatar = (u) => {
   return s;
 };
 
-export async function attach({ token, vibe, avatar }, prepareHandover) {
+export async function attach({ token, vibe, avatar, preset, buybackPct, airdropPct }, prepareHandover) {
   requireEnabled();
   if (!/^0x[0-9a-fA-F]{40}$/.test(token || '')) throw new UserError('token must be a 0x address', 'INVALID_INPUT');
   const info = await chain.tokenInfo(token);
@@ -71,7 +102,7 @@ export async function attach({ token, vibe, avatar }, prepareHandover) {
     id: id(token), token: info.token, name: info.name, symbol: info.symbol, curve: info.curve,
     creator: info.creatorFeeRecipient, agent: address, key: seal(pk),
     status: 'pending_handover', vibe: String(vibe || '').slice(0, 200), avatar: cleanAvatar(avatar),
-    rules: { ...RULES, treasury: !!TREASURY }, x: null,
+    rules: normalizeRules({ preset, buybackPct, airdropPct }), pendingRules: null, x: null,
     stats: { collectedEth: '0', buybackEth: '0', burnedTokens: '0', airdropEth: '0', airdroppedTokens: '0', rentEth: '0', cycles: 0, posts: 0 },
     log: [], createdAt: now(), activatedAt: null, lastTickAt: null, handoverId: null, handoverUrl: null,
   };
@@ -125,7 +156,7 @@ export async function tick(rec) {
     const balance = await chain.getBalance(rec.agent);
     const budget = balance > RESERVE ? balance - RESERVE : 0n;
     if (budget >= MIN_ACTION) {
-      const a = allocate(budget);
+      const a = allocate(budget, rec.rules);
       if (a.rent > 0n && TREASURY) {
         const r = await tx('rent', () => chain.agentSendEth(pk, TREASURY, a.rent));
         if (r?.ok) { actions.push({ kind: 'rent', eth: formatEther(a.rent) }); rec.stats.rentEth = addEth(rec.stats.rentEth, a.rent); }
@@ -251,6 +282,42 @@ export async function testX(token) {
   return { tweetId: t.id };
 }
 
+// Regras. Pelo chat: antes do handover aplica direto (a assinatura do handover
+// confirma); depois vira proposta que o criador confirma na pagina. Pela
+// pagina (sessao do criador): aplica direto.
+export function proposeRules(token, input) {
+  const rec = agents.get(id(token));
+  if (!rec) throw new UserError('this token has no agent', 'NOT_FOUND');
+  if (rec.status === 'released') throw new UserError('this agent was released', 'BAD_STATE');
+  const rules = normalizeRules(input, rec.rules);
+  if (rec.status === 'pending_handover') {
+    rec.rules = rules; rec.pendingRules = null; agents.put(rec);
+    return { applied: true, rules, view: publicView(rec) };
+  }
+  rec.pendingRules = { ...rules, proposedAt: now() };
+  agents.put(rec);
+  return { applied: false, rules, view: publicView(rec) };
+}
+
+export function setRules(token, input) {
+  const rec = agents.get(id(token));
+  if (!rec) throw new UserError('this token has no agent', 'NOT_FOUND');
+  rec.rules = normalizeRules(input, rec.rules);
+  rec.pendingRules = null;
+  agents.put(rec);
+  return publicView(rec);
+}
+
+export function applyPendingRules(token) {
+  const rec = agents.get(id(token));
+  if (!rec) throw new UserError('this token has no agent', 'NOT_FOUND');
+  if (!rec.pendingRules) throw new UserError('nothing proposed', 'BAD_STATE');
+  const { proposedAt, ...rules } = rec.pendingRules;
+  rec.rules = rules; rec.pendingRules = null;
+  agents.put(rec);
+  return publicView(rec);
+}
+
 export function setVibe(token, vibe) {
   const rec = agents.get(id(token));
   if (!rec) throw new UserError('no agent for this token', 'NOT_FOUND');
@@ -320,7 +387,7 @@ export function publicView(rec) {
   if (!rec) return null;
   return {
     token: rec.token, name: rec.name, symbol: rec.symbol, curve: rec.curve, agent: rec.agent, creator: rec.creator,
-    status: rec.status, vibe: rec.vibe, avatar: rec.avatar || null, rules: rec.rules, stats: rec.stats,
+    status: rec.status, vibe: rec.vibe, avatar: rec.avatar || null, rules: rec.rules, pendingRules: rec.pendingRules || null, presets: PRESETS, stats: rec.stats,
     createdAt: rec.createdAt, activatedAt: rec.activatedAt, lastTickAt: rec.lastTickAt, releasedAt: rec.releasedAt || null,
     handoverUrl: rec.status === 'pending_handover' ? rec.handoverUrl : null,
     xConnected: !!rec.x, voice: voiceEnabled(),
