@@ -12,5 +12,5 @@ echo.
 echo Starting Cladeployer on http://localhost:8436
 echo MCP endpoint: http://localhost:8436/mcp
 echo.
-node --env-file-if-exists=.env srcserver.js
+node --env-file-if-exists=.env src\server.js
 pause
