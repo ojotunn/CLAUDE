@@ -1,0 +1,16 @@
+@echo off
+title Pronto
+cd /d "%~dp0"
+if not exist node_modules (
+  echo Installing dependencies...
+  call npm install
+)
+if not exist .env (
+  echo No .env found, using defaults. Copy .env.example to .env to customize.
+)
+echo.
+echo Starting Pronto on http://localhost:8436
+echo MCP endpoint: http://localhost:8436/mcp
+echo.
+node --env-file-if-exists=.env srcserver.js
+pause

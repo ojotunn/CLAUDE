@@ -1,0 +1,20 @@
+{
+  "name": "pronto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Launch a token on pons (Robinhood Chain) by talking to Claude.",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --env-file-if-exists=.env --test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "express": "^5.2.1",
+    "viem": "^2.56.3",
+    "zod": "^4.6.1"
+  }
+}
