@@ -12,11 +12,15 @@ import { seal, open, agentsEnabled, issueSession } from './crypto.js';
 import { speak, voiceEnabled } from './voice.js';
 import { postTweet, validCreds } from './x.js';
 import { CURVE_ABI, ERC20_ABI, ESCROW_ABI, DEAD_ADDRESS } from './abi.js';
-import { UserError, links } from './launches.js';
+import { UserError, links, hooks, launches } from './launches.js';
 
 const { parseEther, formatEther, formatUnits, getAddress } = chain;
 
 export const agents = new Store('agents');
+hooks.agentInfo = (token) => {
+  const r = agents.get(String(token).toLowerCase());
+  return r ? { vibe: r.vibe, avatar: r.avatar || null, rules: r.rules } : null;
+};
 
 export const RULES = {
   rentBps: Number(process.env.AGENT_RENT_BPS || 1000),      // aluguel do cerebro -> TREASURY_ADDRESS
@@ -95,7 +99,12 @@ export async function attach({ token, vibe, avatar, preset, buybackPct, airdropP
   if (!info) throw new UserError('this address is not a pons v2 launch on this network', 'NOT_PONS_TOKEN');
   const existing = agents.get(id(token));
   if (existing && existing.status === 'active') return { agent: publicView(existing), url: null, already: true };
-  if (existing && existing.status === 'pending_handover') return { agent: publicView(existing), url: existing.handoverUrl, already: true };
+  if (existing && existing.status === 'pending_handover') {
+    // Pedido pendente ainda valido: devolve o mesmo. Expirado: cria de novo,
+    // para ninguem "ocupar" o agente de um token alheio para sempre.
+    const h = launches.get(existing.handoverId);
+    if (h && Date.parse(h.expiresAt) > Date.now()) return { agent: publicView(existing), url: existing.handoverUrl, already: true };
+  }
 
   const { pk, address } = chain.newAgentKey();
   const rec = {

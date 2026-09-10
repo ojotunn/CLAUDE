@@ -271,7 +271,8 @@ export async function prepareHandover({ token, name, symbol, agent, currentRecip
 }
 
 // Quem quiser reagir a um handover confirmado registra aqui (evita import circular).
-export const hooks = { handoverConfirmed: null };
+// agentInfo devolve personalidade e divisao para a pagina de assinatura mostrar.
+export const hooks = { handoverConfirmed: null, agentInfo: null };
 
 async function simulateBuy({ curve, quoteInWei, recipient, from, minTokensOut = 0n }) {
   const tx = chain.buildBuyTx({ curve, quoteInWei, minTokensOut, recipient });
@@ -322,6 +323,12 @@ export async function bind(id, walletRaw) {
     const current = launched?.creatorFeeRecipient || rec.currentRecipient;
     if (getAddress(current) !== wallet) throw new UserError(`only the current fee recipient (${current}) can hand the fees over`, 'FORBIDDEN');
     tx = chain.buildHandoverTx({ token: rec.token, newRecipient: rec.agent });
+    const info = hooks.agentInfo?.(rec.token);
+    if (info) {
+      rec.summary.vibe = info.vibe || '';
+      rec.summary.avatar = info.avatar || null;
+      rec.summary.split = `${info.rules.buybackBps / 100}% buy back & burn, ${info.rules.airdropBps / 100}% airdrop to recent buyers, ${info.rules.treasury ? `${info.rules.rentBps / 100}% rent, ` : ''}the rest stays as gas reserve`;
+    }
     try {
       await chain.simulate({ from: wallet, to: tx.to, data: tx.data, value: 0n, fund: true });
     } catch (e) {

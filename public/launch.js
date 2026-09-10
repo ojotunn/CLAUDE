@@ -122,6 +122,8 @@
         ['Contract', `<span class="mono">${esc(s.token)}</span>`],
         ['Agent wallet', `<span class="mono">${esc(s.agent)}</span>`],
         ['Fees today go to', `<span class="mono">${esc(s.currentRecipient)}</span> (you)`],
+        ...(s.split ? [['It will spend', esc(s.split)]] : []),
+        ...(s.vibe ? [['Personality', esc(s.vibe)]] : []),
         ['What happens', esc(s.whatHappens)],
         ['Cost', 'gas only'],
       ];
