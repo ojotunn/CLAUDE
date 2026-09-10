@@ -399,3 +399,16 @@ test('agent extras: salary, raffle, quiet hours, telegram validation, ask withou
   const tg = await fetch(`${base}/api/agent/${PONSDROP}/telegram`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ botToken: 'x', chatId: 'y' }) });
   assert.equal(tg.status, 401, 'telegram needs the creator session');
 });
+
+test('agent records created before new fields existed are upgraded on read', async () => {
+  const { upgrade } = await import('../src/agent.js');
+  const old = { id: 'x', token: '0x' + '1'.repeat(40), status: 'active', rules: { rentBps: 1000, buybackBps: 5000, airdropBps: 2500, treasury: false }, stats: { collectedEth: '0', cycles: 0, posts: 0 }, log: [] };
+  const r = upgrade(old);
+  assert.deepEqual(r.qa, []);
+  assert.deepEqual(r.milestones, []);
+  assert.equal(r.stats.questions, 0);
+  assert.equal(r.stats.raffleTokens, '0');
+  assert.equal(r.rules.salaryBps, 0);
+  assert.equal(r.rules.milestones, true);
+  assert.equal(r.pendingRules, null);
+});

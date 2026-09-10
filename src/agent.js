@@ -205,6 +205,7 @@ async function publish(rec, text, generated) {
 const running = new Set();
 export async function tick(rec) {
   if (rec.status !== 'active' || running.has(rec.id)) return;
+  upgrade(rec);
   running.add(rec.id);
   const pk = open(rec.key);
   const actions = [], txs = [], errors = [], events = [];
@@ -415,7 +416,26 @@ export async function login({ token, wallet, issuedAt, signature }) {
   return { session: issueSession({ wallet, token: rec.token }) };
 }
 
-const need = (token) => { const rec = agents.get(id(token)); if (!rec) throw new UserError('no agent for this token', 'NOT_FOUND'); return rec; };
+// Registros criados antes de um campo existir ganham o campo aqui, na leitura.
+export function upgrade(rec) {
+  if (!rec) return rec;
+  rec.log ||= []; rec.qa ||= []; rec.milestones ||= [];
+  rec.stats ||= {};
+  for (const k of ['collectedEth', 'buybackEth', 'airdropEth', 'raffleEth', 'salaryEth', 'rentEth', 'dipBuyEth']) rec.stats[k] ||= '0';
+  for (const k of ['burnedTokens', 'airdroppedTokens', 'raffleTokens']) rec.stats[k] ||= '0';
+  for (const k of ['cycles', 'posts', 'questions']) rec.stats[k] ||= 0;
+  rec.rules = normalizeRules({}, rec.rules || {});
+  if (rec.pendingRules === undefined) rec.pendingRules = null;
+  if (rec.tg === undefined) rec.tg = null;
+  if (rec.lastPriceEth === undefined) rec.lastPriceEth = null;
+  if (rec.lastScanBlock === undefined) rec.lastScanBlock = null;
+  rec.biggestBuyEth ||= '0';
+  if (rec.graduatedNoted === undefined) rec.graduatedNoted = false;
+  if (rec.lastPostAt === undefined) rec.lastPostAt = null;
+  return rec;
+}
+
+const need = (token) => { const rec = agents.get(id(token)); if (!rec) throw new UserError('no agent for this token', 'NOT_FOUND'); return upgrade(rec); };
 
 export function setX(token, creds) {
   const rec = need(token);
@@ -530,6 +550,7 @@ export async function release(token) {
 // Leitura publica (nunca inclui chave nem credenciais).
 export function publicView(rec) {
   if (!rec) return null;
+  upgrade(rec);
   return {
     token: rec.token, name: rec.name, symbol: rec.symbol, curve: rec.curve, agent: rec.agent, creator: rec.creator,
     status: rec.status, vibe: rec.vibe, avatar: rec.avatar || null,
@@ -558,5 +579,5 @@ export async function liveView(token) {
   return v;
 }
 
-export const get = (token) => agents.get(id(token));
+export const get = (token) => upgrade(agents.get(id(token)));
 export const summaries = () => Object.fromEntries(agents.list().map((r) => [r.id, { agent: r.agent, status: r.status }]));
