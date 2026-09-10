@@ -31,7 +31,7 @@ before(async () => {
   base = `http://127.0.0.1:${port}`;
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeploy-test-'));
   child = spawn(process.execPath, ['src/server.js'], {
-    env: { ...process.env, PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir },
+    env: { ...process.env, PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir, AGENT_SECRET: 'test-secret-for-agents-0123456789', ANTHROPIC_API_KEY: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';
@@ -56,7 +56,7 @@ after(async () => {
 test('MCP handshake exposes the tools', async () => {
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ['launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'token_info']);
+  assert.deepEqual(names, ['agent_status', 'attach_agent', 'launch_status', 'launch_terms', 'prepare_buy', 'prepare_launch', 'preview_launch', 'recent_launches', 'release_agent', 'token_info']);
   const preview = tools.find((t) => t.name === 'preview_launch');
   assert.ok(preview.inputSchema.properties.name, 'preview_launch schema has name');
   assert.ok(preview.inputSchema.properties.devBuyEth, 'preview_launch schema has devBuyEth');
@@ -256,4 +256,87 @@ test('security headers and write rate limit are in place', async () => {
   const ctrl = await callTool('preview_launch', { name: 'Bad\u0000Name\u200b', symbol: 'ok' });
   assert.equal(ctrl.isError, false, ctrl.text);
   assert.equal(ctrl.data.name, 'BadName');
+});
+
+// ---- agentes ----
+test('crypto: seal/open roundtrip and session integrity', async () => {
+  const { seal, open, issueSession, readSession } = await import('../src/crypto.js');
+  const s = seal('0xabc123');
+  assert.notEqual(s, '0xabc123');
+  assert.equal(open(s), '0xabc123');
+  const wallet = '0x' + 'a'.repeat(40), token = '0x' + 'b'.repeat(40);
+  const sess = issueSession({ wallet, token });
+  assert.deepEqual(readSession(sess), { wallet, token });
+  assert.equal(readSession(sess.slice(0, -2) + 'zz'), null, 'tampered session is rejected');
+});
+
+test('x: oauth header is well formed', async () => {
+  const { oauthHeader } = await import('../src/x.js');
+  const h = oauthHeader({ apiKey: 'k', apiSecret: 's', accessToken: 't', accessSecret: 'ts' }, 'POST', 'https://api.x.com/2/tweets');
+  assert.match(h, /^OAuth oauth_consumer_key="k", oauth_nonce="[0-9a-f]{32}", oauth_signature="[^"]+", oauth_signature_method="HMAC-SHA1", oauth_timestamp="\d+", oauth_token="t", oauth_version="1\.0"$/);
+});
+
+test('agent: allocation and template voice', async () => {
+  const { allocate } = await import('../src/agent.js');
+  const { templatePost } = await import('../src/voice.js');
+  const a = allocate(1_000_000n);
+  assert.equal(a.rent + a.buyback + a.airdrop + a.reserve, 1_000_000n);
+  assert.equal(a.buyback, 500_000n);
+  assert.equal(a.airdrop, 250_000n);
+  const t = templatePost({ symbol: 'OWL', actions: [{ kind: 'burn', tokens: 1234567 }, { kind: 'airdrop', tokens: 1000, recipients: 3 }] });
+  assert.match(t, /burned 1,234,567 \$OWL/);
+  assert.match(t, /dropped 1,000 \$OWL on 3 recent buyers/);
+});
+
+let agentPage;
+test('attach_agent creates a wallet and a handover link only the fee recipient can sign', async () => {
+  const { data, isError, text } = await callTool('attach_agent', { token: PONSDROP, vibe: 'test vibe', avatar: 'https://example.com/a.png' });
+  assert.equal(isError, false, text);
+  assert.match(data.agent, /^0x[0-9a-fA-F]{40}$/);
+  assert.equal(data.status, 'pending_handover');
+  assert.match(data.handoverUrl, new RegExp(`^${base}/l/`));
+  agentPage = data.page;
+
+  const again = await callTool('attach_agent', { token: PONSDROP });
+  assert.equal(again.data.agent, data.agent, 'idempotent: same agent wallet');
+
+  const hid = data.handoverUrl.split('/').pop();
+  const wrong = await fetch(`${base}/api/launch/${hid}/bind`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: `0x${crypto.randomBytes(20).toString('hex')}` }) });
+  assert.equal(wrong.status, 400);
+  assert.match((await wrong.json()).error, /only the current fee recipient/);
+
+  const info = await callTool('token_info', { token: PONSDROP });
+  const recipient = info.data.creatorFeeRecipient;
+  const right = await fetch(`${base}/api/launch/${hid}/bind`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: recipient }) });
+  const rec = await right.json();
+  assert.equal(right.status, 200, JSON.stringify(rec));
+  assert.equal(rec.kind, 'handover');
+  assert.equal(rec.tx.to.toLowerCase(), '0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e', 'handover goes to the pons factory');
+  assert.equal(BigInt(rec.tx.value), 0n);
+  assert.ok(['ready', 'needs_funds'].includes(rec.status));
+});
+
+test('agent page and public API expose no secrets; creator endpoints need a signature', async () => {
+  const page = await fetch(`${base}/t/${PONSDROP}`);
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /agent\.js/);
+  const v = await fetch(`${base}/api/agent/${PONSDROP}`).then((r) => r.json());
+  assert.equal(v.status, 'pending_handover');
+  assert.equal(v.vibe, 'test vibe');
+  assert.equal(v.avatar, 'https://example.com/a.png');
+  assert.equal(v.key, undefined, 'no key material in the public view');
+  assert.equal(v.x, undefined);
+  const raw = JSON.stringify(v);
+  assert.ok(!/"key"|"pk"|apiSecret|accessSecret/.test(raw));
+  const denied = await fetch(`${base}/api/agent/${PONSDROP}/vibe`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vibe: 'hacked' }) });
+  assert.equal(denied.status, 401);
+  const badSig = await fetch(`${base}/api/agent/${PONSDROP}/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: v.creator, issuedAt: new Date().toISOString(), signature: '0x' + '11'.repeat(65) }) });
+  assert.equal(badSig.status, 400);
+  const s = await callTool('agent_status', { token: PONSDROP });
+  assert.equal(s.isError, false, s.text);
+  assert.equal(s.data.agent, v.agent);
+  const r = await callTool('release_agent', { token: PONSDROP });
+  assert.match(r.text, /Manage/);
+  const { tokens } = await fetch(`${base}/api/tokens`).then((x) => x.json());
+  assert.deepEqual(tokens, []);
 });

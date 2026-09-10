@@ -58,6 +58,19 @@ export const FACTORY_ABI = [
     ],
   }]),
   view('getLaunchedToken', [addr('token')], [LAUNCHED_TOKEN]),
+  view('feeEscrow', [], [addr('')]),
+  {
+    type: 'function', name: 'transferCreatorFeeRecipient', stateMutability: 'nonpayable',
+    inputs: [addr('token'), addr('newRecipient')], outputs: [],
+  },
+  {
+    type: 'event', name: 'CreatorFeeRecipientUpdated', anonymous: false, inputs: [
+      { indexed: true, name: 'token', type: 'address' },
+      { indexed: true, name: 'previousRecipient', type: 'address' },
+      { indexed: true, name: 'newRecipient', type: 'address' },
+    ],
+  },
+  err('NotCreatorFeeRecipient'),
   {
     type: 'event', name: 'TokenLaunched', anonymous: false, inputs: [
       { indexed: true, name: 'token', type: 'address' },
@@ -97,6 +110,9 @@ export const CURVE_ABI = [
     type: 'function', name: 'buy', stateMutability: 'payable',
     inputs: [u256('quoteIn'), u256('minTokensOut'), addr('recipient')], outputs: [u256('tokensOut')],
   },
+  { type: 'function', name: 'sweepFees', stateMutability: 'nonpayable', inputs: [u256('minBuybackTokensOut')], outputs: [] },
+  view('deployer', [], [addr('')]),
+  view('buybackEnabled', [], [bool('')]),
   view('getReserves', [], [u256('quoteReserve'), u256('tokenReserve')]),
   view('realQuoteReserve', [], [u256('')]),
   view('sellableTokens', [], [u256('')]),
@@ -124,6 +140,15 @@ export const ERC20_ABI = [
   view('symbol', [], [str('')]),
   view('totalSupply', [], [u256('')]),
   view('balanceOf', [addr('owner')], [u256('')]),
+  { type: 'function', name: 'transfer', stateMutability: 'nonpayable', inputs: [addr('to'), u256('amount')], outputs: [bool('')] },
 ];
+
+// Fee escrow da pons v2: as taxas do criador acumulam aqui; claim() paga ETH a quem chama.
+export const ESCROW_ABI = [
+  view('balanceOf', [addr('recipient')], [u256('')]),
+  { type: 'function', name: 'claim', stateMutability: 'nonpayable', inputs: [], outputs: [u256('amount')] },
+];
+
+export const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
 export const ALL_ERRORS = [...FACTORY_ERRORS, ...ROUTER_ERRORS];

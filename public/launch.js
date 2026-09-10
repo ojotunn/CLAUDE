@@ -116,6 +116,16 @@
 
   function summaryRows() {
     const s = rec.summary || {};
+    if (rec.kind === 'handover') {
+      return [
+        ['Token', `<b>${esc(s.name)}</b> <span class="sub">$${esc(s.symbol)}</span>`],
+        ['Contract', `<span class="mono">${esc(s.token)}</span>`],
+        ['Agent wallet', `<span class="mono">${esc(s.agent)}</span>`],
+        ['Fees today go to', `<span class="mono">${esc(s.currentRecipient)}</span> (you)`],
+        ['What happens', esc(s.whatHappens)],
+        ['Cost', 'gas only'],
+      ];
+    }
     if (rec.kind === 'buy') {
       return [
         ['Token', `<b>${esc(s.name)}</b> <span class="sub">$${esc(s.symbol)}</span>`],
@@ -143,7 +153,8 @@
   function render() {
     if (!rec || !terms) return;
     const isLaunch = rec.kind === 'launch';
-    const title = isLaunch ? `Launch ${esc(rec.summary?.name)}` : `Buy ${esc(rec.summary?.symbol)}`;
+    const isHandover = rec.kind === 'handover';
+    const title = isLaunch ? `Launch ${esc(rec.summary?.name)}` : isHandover ? `Give $${esc(rec.summary?.symbol)} its agent` : `Buy ${esc(rec.summary?.symbol)}`;
     let html = `<div class="head">
       <div><div class="big">${title}</div><div class="sub">${esc(terms.chain.name)}${terms.chain.isTestnet ? ' — TESTNET' : ''} · pons v2</div></div>
       ${statusChip()}
@@ -161,6 +172,15 @@
         </div>
         ${rec.tokensOut && rec.tokensOut !== '0' ? `<p class="sub" style="margin-top:14px">Your dev buy received ${esc(rec.tokensOut)} ${esc(rec.summary?.symbol)}.</p>` : ''}
         <p class="sub">Back in Claude, ask whether it went through. The status tool will answer with this address.</p>`;
+      app.innerHTML = html;
+      return;
+    }
+    if (rec.status === 'done' && isHandover) {
+      html += `<div class="notice ok">Done. $${esc(rec.summary?.symbol)} now runs its own wallet.</div>
+        <div class="actions">
+          <a class="btn sm accent" href="/t/${esc(rec.token)}">Open the agent page</a>
+          <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
+        </div>`;
       app.innerHTML = html;
       return;
     }
@@ -197,13 +217,13 @@
       if (account && rec.wallet && account.toLowerCase() === rec.wallet.toLowerCase()) {
         html += `<div class="sub">Connected: <span class="mono">${esc(account)}</span> · balance ${esc(rec.funding?.balanceEth)} ETH</div>`;
         html += `<div class="actions">
-          <button class="accent" id="sign" ${busy || !rec.funding?.ok ? 'disabled' : ''}>${busy ? 'Waiting for wallet…' : (isLaunch ? 'Sign & launch' : 'Sign & buy')}</button>
+          <button class="accent" id="sign" ${busy || !rec.funding?.ok ? 'disabled' : ''}>${busy ? 'Waiting for wallet…' : (isLaunch ? 'Sign & launch' : isHandover ? 'Sign & hand over' : 'Sign & buy')}</button>
           <button class="ghost" id="recheck" ${busy ? 'disabled' : ''}>Re-check balance</button>
         </div>`;
       } else if (!wallets.length) {
         html += `<div class="notice">No browser wallet found. Open this link in a browser with MetaMask, Rabby, Phantom (EVM) or another injected wallet, or in your wallet's built-in browser on mobile.</div>`;
       } else {
-        html += `<div class="sub" style="margin-bottom:10px">Connect the wallet that will pay and sign. It becomes the deployer${isLaunch ? ' and, unless set otherwise, the fee recipient' : ''}.</div>
+        html += `<div class="sub" style="margin-bottom:10px">${isHandover ? `Connect the wallet that currently receives the creator fees (<span class="mono">${esc(rec.summary?.currentRecipient)}</span>). Any other wallet is refused.` : `Connect the wallet that will pay and sign. It becomes the deployer${isLaunch ? ' and, unless set otherwise, the fee recipient' : ''}.`}</div>
           <div class="wallets">${wallets.map((w, i) => `<button class="ghost" data-w="${i}" ${busy ? 'disabled' : ''}>${w.info.icon ? `<img src="${esc(w.info.icon)}" alt="">` : ''}${esc(w.info.name)}</button>`).join('')}</div>`;
       }
     }

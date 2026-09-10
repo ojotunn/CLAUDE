@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { APP_NAME, VERSION, CHAIN, LIMITS, PUBLIC_URL } from './config.js';
 import * as chain from './chain.js';
 import * as launches from './launches.js';
+import * as agent from './agent.js';
 
 const INSTRUCTIONS = `${APP_NAME} launches tokens on pons (Robinhood Chain, pons v2 bonding curve) from a conversation. It never holds keys: the user signs in their own wallet through a link.
 
@@ -13,6 +14,7 @@ How to use it:
 2. Only after the user confirms, call prepare_launch with the same fields. It returns a signing link. Give the user that link; they connect their wallet there, see the exact contract address, and sign once.
 3. When the user asks whether it went through, call launch_status with the id. It reports the contract address once the transaction is confirmed. Never guess or invent a contract address.
 4. token_info reports price, raised ETH and graduation progress for any pons v2 token. prepare_buy returns a signing link to buy a token that is still on its bonding curve.
+5. Agents: attach_agent gives a live token its own agent. The agent gets a wallet of its own; the creator signs ONE transaction (through a link) handing the token's creator fees to that wallet. From then on the agent collects the fees and, on its own, buys back and burns, airdrops recent buyers, keeps a gas reserve, and posts about it on its public page (and on X if the creator connected their own X API). No approvals per action. agent_status reports what it did. release_agent explains how the creator takes the fees back (a signature on the agent page).
 
 Facts: supply is fixed by pons per launch; the launch fee is read from the chain; dev buys are capped at ${(LIMITS.maxDevBuyBps / 100).toFixed(0)}% of supply and are exempt from the pons snipe tax; the wallet that signs becomes the deployer and, unless another address is given, the creator fee recipient. Network: ${CHAIN.name} (chain id ${CHAIN.id}).`;
 
@@ -137,6 +139,44 @@ export function createMcpServer() {
     const rec = await launches.prepareBuy(stripUndefined(a));
     return ok({ id: rec.id, url: rec.url, expiresAt: rec.expiresAt, summary: rec.summary },
       `Ready to sign. Send the user this link: ${rec.url}`);
+  }));
+
+  server.registerTool('attach_agent', {
+    title: 'Give a token an agent',
+    description: 'Creates an agent wallet for a live pons v2 token and returns a link where the creator (current creator-fee recipient) signs once to hand the creator fees to the agent. After that the agent acts on its own: collect fees, buy back and burn, airdrop recent buyers, keep a gas reserve, post about it. Call only after the user asked for an agent.',
+    inputSchema: {
+      token: z.string().describe('Token contract address (0x...)'),
+      vibe: z.string().optional().describe('One line of personality for the agent\'s posts, e.g. "dry humor, night owl energy"'),
+      avatar: z.string().optional().describe('https URL of a profile picture for the agent (optional; the creator can also upload one on the agent page)'),
+    },
+  }, run(async (a) => {
+    const r = await agent.attach(stripUndefined(a), launches.prepareHandover);
+    const text = r.already
+      ? (r.url ? `This token already has an agent waiting for the handover signature: ${r.url}` : `This token already has an active agent: ${r.agent.page}`)
+      : `Agent wallet created: ${r.agent.agent}. Send the creator this link to sign the fee handover: ${r.url}. Agent page: ${r.agent.page}`;
+    return ok({ agent: r.agent.agent, status: r.agent.status, handoverUrl: r.url, page: r.agent.page, rules: r.agent.rules }, text);
+  }));
+
+  server.registerTool('agent_status', {
+    title: 'Agent status',
+    description: 'What a token\'s agent has done: balance, pending fees, totals collected/burned/airdropped, last cycles and posts.',
+    inputSchema: { token: z.string().describe('Token contract address (0x...)') },
+  }, run(async ({ token }) => {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(token || '')) throw new launches.UserError('token must be a 0x address', 'INVALID_INPUT');
+    const v = await agent.liveView(token);
+    if (!v) throw new launches.UserError('this token has no agent', 'NOT_FOUND');
+    return ok({ ...v, log: v.log.slice(0, 10) });
+  }));
+
+  server.registerTool('release_agent', {
+    title: 'Take the fees back from an agent',
+    description: 'Explains how the creator takes the creator fees and the agent balance back. It requires a wallet signature on the agent page, so this tool only returns the link and the steps.',
+    inputSchema: { token: z.string().describe('Token contract address (0x...)') },
+  }, run(async ({ token }) => {
+    const rec = agent.get(token);
+    if (!rec) throw new launches.UserError('this token has no agent', 'NOT_FOUND');
+    return ok({ page: `${PUBLIC_URL}/t/${rec.token}`, status: rec.status },
+      `Open ${PUBLIC_URL}/t/${rec.token}, press "Manage" and sign the login message with the creator wallet (${rec.creator}), then press "Release agent". The agent hands the fee recipient role and its balance back to that wallet.`);
   }));
 
   server.registerTool('recent_launches', {

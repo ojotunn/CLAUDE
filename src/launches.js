@@ -245,6 +245,34 @@ export async function prepareBuy(raw) {
   return publicRecord(rec);
 }
 
+// ---------------------------------------------------------------------------
+// Handover das taxas de criador para a carteira de um agente. Quem assina e o
+// recebedor atual; a pagina recusa qualquer outra carteira.
+export async function prepareHandover({ token, name, symbol, agent, currentRecipient }) {
+  const now = Date.now();
+  const rec = launches.put({
+    id: launches.newId(),
+    kind: 'handover',
+    status: 'awaiting_wallet',
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + LIMITS.launchTtlMs).toISOString(),
+    network: CHAIN.network,
+    chainId: CHAIN.id,
+    token, name, symbol, agent, currentRecipient,
+    summary: {
+      network: CHAIN.name, token, name, symbol, agent, currentRecipient,
+      whatHappens: `${symbol}'s creator fees will be paid to the agent wallet from now on. The agent uses them to buy back, burn, airdrop and keep a gas reserve. You can take them back any time from the agent page.`,
+      plusGas: 'network gas is paid by the signing wallet',
+    },
+    warnings: [],
+    wallet: null, tx: null, predicted: null, funding: null, txHash: null, error: null,
+  });
+  return publicRecord(rec);
+}
+
+// Quem quiser reagir a um handover confirmado registra aqui (evita import circular).
+export const hooks = { handoverConfirmed: null };
+
 async function simulateBuy({ curve, quoteInWei, recipient, from, minTokensOut = 0n }) {
   const tx = chain.buildBuyTx({ curve, quoteInWei, minTokensOut, recipient });
   try {
@@ -289,6 +317,18 @@ export async function bind(id, walletRaw) {
     tx = chain.buildLaunchTx({ params, devBuyWei, recipient: wallet, launchFee: terms.launchFee, minTokensOut });
     predicted = { token: sim.token, curve: sim.curve, tokensOut: tokensStr(sim.tokensOut) };
     rec.creatorFeeRecipient = params.creatorFeeRecipient;
+  } else if (rec.kind === 'handover') {
+    const launched = await chain.launchedToken(rec.token);
+    const current = launched?.creatorFeeRecipient || rec.currentRecipient;
+    if (getAddress(current) !== wallet) throw new UserError(`only the current fee recipient (${current}) can hand the fees over`, 'FORBIDDEN');
+    tx = chain.buildHandoverTx({ token: rec.token, newRecipient: rec.agent });
+    try {
+      await chain.simulate({ from: wallet, to: tx.to, data: tx.data, value: 0n, fund: true });
+    } catch (e) {
+      const r = chain.explainRevert(e);
+      throw new UserError(`handover simulation failed: ${r.message}`, r.code);
+    }
+    predicted = { token: rec.token, curve: null, tokensOut: null };
   } else {
     const quoteInWei = parseEther(rec.ethAmount);
     sim = await simulateBuy({ curve: rec.curve, quoteInWei, recipient: wallet, from: wallet });
@@ -298,6 +338,7 @@ export async function bind(id, walletRaw) {
     predicted = { token: rec.token, curve: rec.curve, tokensOut: tokensStr(sim.tokensOut) };
   }
 
+  if (rec.kind === 'handover') tx.value = 0n;
   const balance = await chain.getBalance(wallet);
   let gas = null, funding;
   try {
@@ -381,6 +422,16 @@ function watch(rec) {
     // 3) esperar o recibo
     const r = await chain.waitForReceipt(rec.txHash);
     if (!r.ok) return fail(rec, 'the transaction reverted on-chain');
+    if (rec.kind === 'handover') {
+      rec.status = 'done';
+      rec.error = null;
+      rec.confirmedAt = new Date().toISOString();
+      rec.blockNumber = r.blockNumber.toString();
+      launches.put(rec);
+      console.log(`[handover] ${rec.id} confirmed for ${rec.symbol}`);
+      try { await hooks.handoverConfirmed?.(rec); } catch (e) { console.error('[handover hook]', e); }
+      return;
+    }
     if (rec.kind === 'launch') {
       if (!r.token) return fail(rec, 'the transaction confirmed but no pons launch event was found');
       rec.status = 'live';

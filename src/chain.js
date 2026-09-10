@@ -2,11 +2,12 @@
 // nada. Ele le a chain, monta calldata, simula com eth_call e devolve a
 // transacao crua para a carteira do usuario assinar no navegador.
 import {
-  createPublicClient, http, defineChain, encodeFunctionData, decodeFunctionResult, decodeErrorResult,
-  parseEther, formatEther, formatUnits, getAddress, parseEventLogs,
+  createPublicClient, createWalletClient, http, defineChain, encodeFunctionData, decodeFunctionResult, decodeErrorResult,
+  parseEther, formatEther, formatUnits, getAddress, parseEventLogs, verifyMessage,
 } from 'viem';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { CHAIN, CONTRACTS, ZERO_ADDRESS, LIMITS } from './config.js';
-import { FACTORY_ABI, ROUTER_ABI, CURVE_ABI, ERC20_ABI, ALL_ERRORS } from './abi.js';
+import { FACTORY_ABI, ROUTER_ABI, CURVE_ABI, ERC20_ABI, ESCROW_ABI, ALL_ERRORS } from './abi.js';
 
 export const chain = defineChain({
   id: CHAIN.id,
@@ -235,4 +236,80 @@ export async function tokenInfo(address) {
   };
 }
 
-export { formatEther, parseEther, formatUnits, getAddress };
+// ---------------------------------------------------------------------------
+// Handover das taxas de criador para o agente (assinado pelo recebedor atual).
+export function buildHandoverTx({ token, newRecipient }) {
+  return {
+    via: 'factory',
+    to: CONTRACTS.factory,
+    data: encodeFunctionData({ abi: FACTORY_ABI, functionName: 'transferCreatorFeeRecipient', args: [token, newRecipient] }),
+    value: 0n,
+  };
+}
+
+export const launchedToken = (token) => client.readContract({ ...factory, functionName: 'getLaunchedToken', args: [token] }).catch(() => null);
+
+// ---------------------------------------------------------------------------
+// Carteira do agente. A chave nasce aqui, vive cifrada no disco e so assina
+// pelas funcoes abaixo: contratos da pons, queima e transferencias do token.
+export function newAgentKey() {
+  const pk = generatePrivateKey();
+  return { pk, address: privateKeyToAccount(pk).address };
+}
+
+const walletFor = (pk) => createWalletClient({ account: privateKeyToAccount(pk), chain, transport: http(CHAIN.rpc, { timeout: 20_000 }) });
+
+async function confirm(hash) {
+  const receipt = await client.waitForTransactionReceipt({ hash, timeout: 180_000, pollingInterval: 2_000 });
+  return { hash, ok: receipt.status === 'success', receipt };
+}
+
+export async function agentWrite(pk, { address, abi, functionName, args = [], value = 0n }) {
+  const w = walletFor(pk);
+  const hash = await w.writeContract({ address, abi, functionName, args, value });
+  return confirm(hash);
+}
+
+export async function agentSendEth(pk, to, value) {
+  const w = walletFor(pk);
+  const hash = await w.sendTransaction({ to, value });
+  return confirm(hash);
+}
+
+export const escrowBalance = (recipient) => client.readContract({ address: CONTRACTS.feeEscrow, abi: ESCROW_ABI, functionName: 'balanceOf', args: [recipient] });
+export const tokenBalance = (token, owner) => client.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [owner] });
+
+// Taxas ainda paradas na curva (antes de varrer): saldo da curva menos a reserva real.
+export async function curveUnswept(curve) {
+  const [bal, real] = await Promise.all([client.getBalance({ address: curve }), client.readContract({ address: curve, abi: CURVE_ABI, functionName: 'realQuoteReserve' })]);
+  return bal > real ? bal - real : 0n;
+}
+
+export const curveFlags = async (curve) => {
+  const [deployer, buybackEnabled, graduated] = await Promise.all([
+    client.readContract({ address: curve, abi: CURVE_ABI, functionName: 'deployer' }),
+    client.readContract({ address: curve, abi: CURVE_ABI, functionName: 'buybackEnabled' }),
+    client.readContract({ address: curve, abi: CURVE_ABI, functionName: 'graduated' }),
+  ]);
+  return { deployer, buybackEnabled, graduated };
+};
+
+// Compradores recentes na curva, pelos eventos CurveBuy (so chain, sem explorer).
+export async function recentBuyers(curve, { blocks = 20_000n, max = 20, exclude = [] } = {}) {
+  const latest = await client.getBlockNumber();
+  const fromBlock = latest > blocks ? latest - blocks : 0n;
+  const event = CURVE_ABI.find((i) => i.type === 'event' && i.name === 'CurveBuy');
+  let logs = [];
+  try { logs = await client.getLogs({ address: curve, event, fromBlock, toBlock: latest }); } catch { return []; }
+  const skip = new Set(exclude.map((a) => a.toLowerCase()));
+  const totals = new Map();
+  for (const l of logs) {
+    const r = l.args?.recipient; if (!r || skip.has(r.toLowerCase())) continue;
+    totals.set(r, (totals.get(r) || 0n) + (l.args.tokensOut || 0n));
+  }
+  return [...totals.entries()].sort((a, b) => (b[1] > a[1] ? 1 : -1)).slice(0, max).map(([address, bought]) => ({ address, bought }));
+}
+
+export const verifySignedMessage = ({ address, message, signature }) => verifyMessage({ address, message, signature }).catch(() => false);
+
+export { formatEther, parseEther, formatUnits, getAddress, ESCROW_ABI, CURVE_ABI, ERC20_ABI };

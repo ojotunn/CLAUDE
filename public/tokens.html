@@ -54,7 +54,7 @@
             const prog = t.info?.graduationProgress ?? 0;
             const phase = t.info?.graduated ? 'graduated' : `${fmt(prog, 1)}%`;
             return `<tr>
-              <td><a href="${esc(t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span><div class="addr small muted">${short(t.token)}</div></td>
+              <td><a href="${esc(t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span>${t.agent?.status === 'active' ? ` <a href="/t/${esc(t.token)}" style="font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft)">agent</a>` : ''}<div class="addr small muted">${short(t.token)}</div></td>
               <td class="mono">${t.info ? fmt(t.info.priceEth, 10) : '—'}</td>
               <td class="mono">${t.info ? fmt(t.info.marketCapEth, 3) : '—'}</td>
               <td class="mono">${t.info ? fmt(t.info.raisedEth, 4) : '—'} / ${t.info ? fmt(t.info.graduationThresholdEth, 1) : '—'}</td>
