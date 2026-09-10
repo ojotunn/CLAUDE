@@ -73,6 +73,14 @@ button:disabled { opacity: .45; cursor: default; }
 .hero .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
 .rule { border: 0; border-top: 1px solid var(--line); margin: 0; }
 
+/* faixa "built on" */
+.builton { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); }
+.builton-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.builton-item { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 26px 12px; color: var(--faint); font-weight: 600; font-size: 17px; border-right: 1px solid var(--line); }
+.builton-item:last-child { border-right: 0; }
+.builton-item svg { width: 26px; height: 26px; fill: currentColor; }
+@media (max-width: 720px) { .builton-item { border-right: 0; border-bottom: 1px solid var(--line); padding: 18px 12px; } .builton-item:last-child { border-bottom: 0; } }
+
 /* chat de exemplo */
 .chat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 14px; }
 .msg { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; font-size: 15px; }
