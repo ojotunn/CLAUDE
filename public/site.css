@@ -16,8 +16,9 @@
   --warn-soft: #f8efd6;
   --bad: #b4413c;
   --bad-soft: #f7e2e0;
-  --serif: "Tiempos Text", Georgia, "Times New Roman", serif;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  /* Uma familia so (Manrope): titulos em 600, texto em 400. Escolha do Michel, opcao 9. */
+  --serif: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --radius: 14px;
 }
@@ -27,10 +28,10 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 a { color: var(--accent-hover); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, .mono { font-family: var(--mono); font-size: .92em; }
-h1, h2, h3 { font-family: var(--serif); font-weight: 500; letter-spacing: -.01em; line-height: 1.15; margin: 0 0 .5em; }
-h1 { font-size: clamp(38px, 6.2vw, 68px); }
-h2 { font-size: clamp(26px, 3.4vw, 36px); }
-h3 { font-size: 21px; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -.02em; line-height: 1.12; margin: 0 0 .5em; }
+h1 { font-size: clamp(36px, 5.8vw, 64px); letter-spacing: -.03em; }
+h2 { font-size: clamp(26px, 3.2vw, 34px); }
+h3 { font-size: 20px; }
 p { margin: 0 0 1em; }
 .muted { color: var(--muted); }
 .small { font-size: 14px; }
@@ -97,7 +98,7 @@ button:disabled { opacity: .45; cursor: default; }
 /* estatísticas */
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
-.stat .v { font-family: var(--serif); font-size: 30px; line-height: 1.1; }
+.stat .v { font-family: var(--serif); font-weight: 600; letter-spacing: -.02em; font-size: 28px; line-height: 1.1; }
 .stat .k { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
 /* listas */
@@ -150,7 +151,7 @@ footer .fine { margin-top: 22px; font-size: 13px; color: var(--faint); max-width
 /* página de assinatura */
 .sign { max-width: 640px; margin: 36px auto 80px; }
 .sign .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.big { font-family: var(--serif); font-size: 30px; line-height: 1.1; }
+.big { font-family: var(--serif); font-weight: 600; letter-spacing: -.02em; font-size: 28px; line-height: 1.1; }
 .sub { color: var(--muted); font-size: 14px; }
 .kv { display: grid; grid-template-columns: 140px 1fr; gap: 9px 16px; font-size: 15px; }
 .kv .k { color: var(--muted); }
