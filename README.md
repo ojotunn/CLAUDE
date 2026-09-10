@@ -1,9 +1,11 @@
-# Pronto
+# Cladeployer
 
 Lança token na pons (Robinhood Chain, pons v2) conversando com o Claude. É o
 equivalente do Brdy (ChatGPT) do lado do Claude: um **conector MCP** que o
-usuário adiciona no claude.ai, mais uma página de assinatura onde a carteira
-dele assina. Projeto independente, sem nada do Blizzard.
+usuário adiciona no claude.ai, mais um site com página de assinatura onde a
+carteira dele assina. Projeto independente, sem nada do Blizzard.
+
+Repositório: https://github.com/ojotunn/CLAUDE
 
 ## Como funciona
 
@@ -23,6 +25,14 @@ dele assina. Projeto independente, sem nada do Blizzard.
 
 Nenhuma chave passa pelo servidor. Ele só monta calldata e assiste.
 
+## Site
+
+Tudo en-US, em `public/`: home (`/`), `/how`, `/tokens` (feed ao vivo com
+preço, ETH captado e progresso de graduação), `/docs`, `/support`, `/privacy`,
+`/terms` e a página de assinatura `/l/<id>`. Cabeçalho, rodapé e os dados vivos
+(taxa, supply, endereços) vêm de `site.js` + `/api/terms`. Paleta quente
+alinhada ao Claude: creme, quase-preto, terracota, títulos em serifa.
+
 ## Rodar local
 
 ```
@@ -33,7 +43,7 @@ npm start
 
 Ou `START-Windows.bat`. Sobe em `http://localhost:8436`. O endpoint do conector
 é `http://localhost:8436/mcp`, mas o claude.ai precisa de uma URL pública
-(HTTPS), então local serve só para testar com o cliente MCP.
+(HTTPS), então local serve para ver o site e testar com o cliente MCP.
 
 ## Testes
 
@@ -45,7 +55,7 @@ Sobe o servidor de verdade numa porta livre, conecta um cliente MCP e exercita
 o caminho inteiro contra a mainnet (só leitura e simulação, nada assinado):
 handshake, termos, prévia com e sem dev buy, clamp do teto de 5%, preparação,
 página de assinatura, bind de carteira com endereço previsto, status, token
-info e compra na curva.
+info, compra na curva, e todas as páginas do site.
 
 ## Conectar no Claude
 
@@ -59,6 +69,7 @@ Team/Enterprise e passar pela revisão.
 - Dockerfile pronto; `railway.toml` com healthcheck em `/api/health`.
 - Variáveis: `PUBLIC_URL=https://<dominio>` (sem barra no fim), `DATA_DIR=/app/data`
   e um volume montado em `/app/data`. Sem volume os lançamentos somem no redeploy.
+- Opcionais: `LINK_X`, `LINK_TELEGRAM`, `SUPPORT_EMAIL` (rodapé e suporte).
 - `PORT` o Railway injeta.
 
 ## Ferramentas do conector
@@ -71,7 +82,7 @@ Team/Enterprise e passar pela revisão.
 | `launch_status` | estado por id; devolve o CA quando `live` |
 | `token_info` | preço, ETH captado, progresso de graduação de qualquer token pons v2 |
 | `prepare_buy` | link para comprar na curva de um token já lançado |
-| `recent_launches` | últimos lançamentos feitos pelo Pronto |
+| `recent_launches` | últimos lançamentos feitos pelo Cladeployer |
 
 ## Regras embutidas
 
@@ -94,3 +105,5 @@ Team/Enterprise e passar pela revisão.
   `/launchpad/<endereço>`; se a pons mudar, é uma variável.
 - Testnet: `PONS_NETWORK=testnet` troca chain e RPC, mas a pons não publica os
   endereços dos contratos lá; precisam vir por env.
+- A assinatura real ainda não foi exercitada (precisa de carteira com ETH na
+  Robinhood Chain).

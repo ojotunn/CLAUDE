@@ -54,5 +54,12 @@ export const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`)
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
 // Pagina do token na pons. {token} e substituido pelo endereco.
 export const PONS_TOKEN_URL = process.env.PONS_TOKEN_URL || 'https://www.ponsfamily.com/launchpad/{token}';
-export const APP_NAME = 'Pronto';
+export const APP_NAME = 'Cladeployer';
 export const VERSION = '0.1.0';
+export const REPO_URL = 'https://github.com/ojotunn/CLAUDE';
+// Contatos mostrados no rodape e na pagina de suporte (vazio = nao mostra).
+export const LINKS = {
+  x: process.env.LINK_X || null,
+  telegram: process.env.LINK_TELEGRAM || null,
+  email: process.env.SUPPORT_EMAIL || null,
+};

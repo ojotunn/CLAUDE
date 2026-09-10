@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · Cladeployer</title>
+  <link rel="stylesheet" href="/site.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d97757'/%3E%3Cpath d='M10 21.5 16 9l6 12.5' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12.6 17.2h6.8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="nav" id="nav"></header>
+  <main class="wrap narrow">
+    <section class="hero" style="padding-bottom:12px">
+      <div class="kicker"><i></i> Privacy</div>
+      <h1 style="font-size:clamp(32px,5vw,48px)">What Cladeployer keeps.</h1>
+    </section>
+    <section class="section tight">
+      <h3>Stored</h3>
+      <p class="muted">When Claude prepares a launch or a buy, the server stores the launch parameters you gave (name, ticker, description, links, tax settings, dev buy amount), the wallet address that connects on the signing page, the unsigned transaction it built, and the transaction hash your wallet returns. Once the transaction confirms, the token and curve addresses are stored and listed publicly on the Tokens page together with the deployer address, because they are already public on the chain.</p>
+      <h3>Not stored</h3>
+      <p class="muted">Private keys, seed phrases, signatures, your Claude account, your conversations. The server never receives them. The signing page talks to your wallet extension directly.</p>
+      <h3>Logs</h3>
+      <p class="muted">The server keeps standard request logs (IP address, path, time) for rate limiting and debugging, rotated by the hosting provider. There are no analytics scripts, no advertising trackers and no cookies set by Cladeployer.</p>
+      <h3>Third parties</h3>
+      <p class="muted">Previews and status checks query the public Robinhood Chain RPC. Signing links may be sent to you by Claude, which is operated by Anthropic under its own privacy policy. pons stores launch metadata on-chain under its own terms.</p>
+      <h3>Removal</h3>
+      <p class="muted">Prepared launches that were never signed expire after 24 hours and can be deleted on request. On-chain data cannot be removed by anyone.</p>
+    </section>
+  </main>
+  <footer id="footer"></footer>
+  <script src="/site.js"></script>
+</body>
+</html>

@@ -134,8 +134,8 @@ export function createMcpServer() {
   }));
 
   server.registerTool('recent_launches', {
-    title: 'Recent launches through Pronto',
-    description: 'The latest tokens launched through Pronto that are live on-chain.',
+    title: 'Recent launches through Cladeployer',
+    description: 'The latest tokens launched through Cladeployer that are live on-chain.',
     inputSchema: { limit: z.number().int().optional().describe('How many (default 20, max 100)') },
   }, run(async ({ limit }) => ok({ site: PUBLIC_URL, launches: launches.recent(limit) })));
 

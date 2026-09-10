@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docs · Cladeployer</title>
+  <meta name="description" content="Connect Cladeployer to Claude, the seven tools it exposes, guardrails, network and contracts, self-hosting and the public API.">
+  <link rel="stylesheet" href="/site.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d97757'/%3E%3Cpath d='M10 21.5 16 9l6 12.5' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12.6 17.2h6.8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="nav" id="nav"></header>
+  <main class="wrap">
+    <section class="hero" style="padding-bottom:24px">
+      <div class="kicker"><i></i> Docs</div>
+      <h1 style="font-size:clamp(34px,5vw,54px)">Everything Claude can do here.</h1>
+      <p class="lead">Connect the tool, learn what each command does, and see what is enforced on the way to the chain.</p>
+    </section>
+
+    <div class="doc">
+      <aside class="toc">
+        <a href="#connect">Connect to Claude</a>
+        <a href="#prompts">Example prompts</a>
+        <a href="#tools">Tools</a>
+        <a href="#guardrails">Guardrails</a>
+        <a href="#network">Network &amp; contracts</a>
+        <a href="#api">Public API</a>
+        <a href="#selfhost">Self-host</a>
+        <a href="#changelog">Changelog</a>
+      </aside>
+      <article>
+        <section id="connect">
+          <h2>Connect to Claude</h2>
+          <p class="muted">Cladeployer is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer.</p>
+          <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
+          <ol class="steps">
+            <li><div><b>Customize → Connectors</b><p>In Claude on the web, in the desktop app, or in Cowork.</p></div></li>
+            <li><div><b>Add custom connector</b><p>Paste the URL above. Name it Cladeployer. No OAuth, no API key.</p></div></li>
+            <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure Cladeployer is on.</p></div></li>
+          </ol>
+          <h3>Plans</h3>
+          <p class="muted">Free (one custom connector), Pro and Max can add it by URL. On Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
+        </section>
+
+        <section id="prompts">
+          <h2>Example prompts</h2>
+          <div class="chat">
+            <div class="msg user"><div class="who">You</div><div class="body">What does it cost to launch on pons right now?</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Launch a token called Night Owl, ticker OWL, "for people who ship at 3am", 0.05 ETH dev buy.</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Same, but send the creator fees to 0xAbc… and set a 2% creator tax.</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Did my launch go through? What's the contract address?</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">How is 0x1234… doing? How far from graduation?</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Buy 0.01 ETH of 0x1234… for me.</div></div>
+          </div>
+        </section>
+
+        <section id="tools">
+          <h2>Tools</h2>
+          <p class="muted">What Claude calls under the hood. You never type these; they are listed so you know what can happen.</p>
+          <table class="params">
+            <thead><tr><th>Tool</th><th>What it does</th><th>Writes anything?</th></tr></thead>
+            <tbody>
+              <tr><td><code>launch_terms</code></td><td>Reads the live pons terms: launch fee, fixed supply, maximum creator tax, whether launches are open to every wallet, graduation threshold.</td><td>No</td></tr>
+              <tr><td><code>preview_launch</code></td><td>Simulates a launch on-chain and returns the terms, the dev buy result and the total cost. Nothing is stored.</td><td>No</td></tr>
+              <tr><td><code>prepare_launch</code></td><td>Stores the launch and returns a signing link valid for 24 hours. Claude should only call it after you confirmed the preview.</td><td>Stores the request</td></tr>
+              <tr><td><code>launch_status</code></td><td>Status of a launch or buy by id. Returns the contract address once the transaction is confirmed.</td><td>No</td></tr>
+              <tr><td><code>token_info</code></td><td>Price, market cap, ETH raised, graduation progress and phase for any pons v2 token.</td><td>No</td></tr>
+              <tr><td><code>prepare_buy</code></td><td>Simulates a buy on a token's bonding curve and returns a signing link.</td><td>Stores the request</td></tr>
+              <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Cladeployer that are live on-chain.</td><td>No</td></tr>
+            </tbody>
+          </table>
+          <h3>Launch parameters</h3>
+          <table class="params">
+            <thead><tr><th>Field</th><th>Meaning</th><th>Default</th></tr></thead>
+            <tbody>
+              <tr><td><code>name</code></td><td>Token name, up to 40 characters.</td><td>required</td></tr>
+              <tr><td><code>symbol</code></td><td>Ticker, up to 12 characters. Uppercased; a leading $ is dropped.</td><td>required</td></tr>
+              <tr><td><code>description</code></td><td>Up to 600 characters, stored on-chain by pons.</td><td>empty</td></tr>
+              <tr><td><code>logo</code></td><td>Image URL.</td><td>empty</td></tr>
+              <tr><td><code>twitter</code> <code>telegram</code> <code>discord</code> <code>website</code> <code>farcaster</code></td><td>Links stored with the launch.</td><td>empty</td></tr>
+              <tr><td><code>devBuyEth</code></td><td>ETH the creator spends in the same transaction as the launch.</td><td>0</td></tr>
+              <tr><td><code>creatorTaxBps</code></td><td>Creator tax on every curve trade, in basis points (100 = 1%). Capped by pons.</td><td>0</td></tr>
+              <tr><td><code>buybackEnabled</code></td><td>Route part of the fees into pons buybacks of the token.</td><td>false</td></tr>
+              <tr><td><code>creatorFeeRecipient</code></td><td>Wallet that earns the creator fees.</td><td>the wallet that signs</td></tr>
+              <tr><td><code>wallet</code></td><td>The wallet that will sign, if you tell Claude. Enables the whitelist check and the exact address in the preview.</td><td>unknown until you connect</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="guardrails">
+          <h2>Guardrails</h2>
+          <ul class="checks">
+            <li><div><b>Non-custodial.</b> The server builds calldata and simulates it. Signing and broadcasting happen in your wallet. There is no place to enter a key.</div></li>
+            <li><div><b>Dev buy cap:</b> <span data-fill="cap">5%</span> of total supply. Larger requests are reduced by binary search to the largest amount under the cap, and the preview says so.</div></li>
+            <li><div><b>Creator tax cap:</b> the pons maximum (<span data-fill="maxTax">10%</span>), read from the factory.</div></li>
+            <li><div><b>Pinned economics:</b> the factory's <code>previewLaunchEconomics</code> digest is written into the transaction. A change on the pons side makes the launch revert.</div></li>
+            <li><div><b>Whitelist:</b> <code>canLaunch(wallet)</code> is checked at preview (if the wallet is known) and again when the wallet connects. Launches are currently <span data-fill="open">open to any wallet</span>.</div></li>
+            <li><div><b>Slippage floors:</b> 1% on the dev buy (the curve is created in the same transaction), 3% on curve buys.</div></li>
+            <li><div><b>Expiry:</b> a prepared launch expires 24 hours after it was created.</div></li>
+            <li><div><b>Native pair only.</b> Launches are paired with ETH. Buys are only offered while the token is on its bonding curve.</div></li>
+          </ul>
+        </section>
+
+        <section id="network">
+          <h2>Network &amp; contracts</h2>
+          <table class="params">
+            <tbody>
+              <tr><th>Network</th><td><span data-fill="network">Robinhood Chain</span> · chain id <span data-fill="chainId">4663</span></td></tr>
+              <tr><th>RPC</th><td class="mono" data-fill="rpc">…</td></tr>
+              <tr><th>Explorer</th><td class="mono" data-fill="explorer">…</td></tr>
+              <tr><th>pons v2 factory</th><td class="mono" data-fill="factory">…</td></tr>
+              <tr><th>Launch &amp; buy router</th><td class="mono" data-fill="router">…</td></tr>
+              <tr><th>Supply per launch</th><td><span data-fill="supply">…</span> tokens</td></tr>
+              <tr><th>Launch fee</th><td><span data-fill="fee">…</span> ETH</td></tr>
+              <tr><th>Graduates at</th><td><span data-fill="grad">…</span> ETH raised on the curve</td></tr>
+            </tbody>
+          </table>
+          <p class="muted small" style="margin-top:12px">Addresses are read from the running server, so a pons contract upgrade shows up here as soon as the server is reconfigured. pons documents its contracts at <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">docs.ponsfamily.com</a>.</p>
+        </section>
+
+        <section id="api">
+          <h2>Public API</h2>
+          <p class="muted">The signing page and this site use a small JSON API. It is read-only except for the two calls the signing page makes.</p>
+          <pre>GET  /api/health              liveness
+GET  /api/terms               live pons terms, chain and contract addresses
+GET  /api/launches?limit=20   tokens launched through Cladeployer that are live
+GET  /api/tokens              same list enriched with price, market cap, progress
+GET  /api/launch/:id          status of one launch or buy
+POST /api/launch/:id/bind     { wallet }  simulate from this wallet, return the unsigned tx
+POST /api/launch/:id/tx       { hash }    record the signed transaction hash
+POST /mcp                     the MCP endpoint Claude talks to</pre>
+        </section>
+
+        <section id="selfhost">
+          <h2>Self-host</h2>
+          <p class="muted">Cladeployer is open source: <a href="https://github.com/ojotunn/CLAUDE" target="_blank" rel="noopener">github.com/ojotunn/CLAUDE</a>. It is one Node.js process with a JSON file for storage.</p>
+          <pre>git clone https://github.com/ojotunn/CLAUDE.git cladeployer
+cd cladeployer
+npm install
+cp .env.example .env     # set PUBLIC_URL to your public HTTPS address
+npm start                # http://localhost:8436
+npm test                 # 13 end-to-end checks against the chain</pre>
+          <table class="params">
+            <thead><tr><th>Variable</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><code>PUBLIC_URL</code></td><td>Public HTTPS origin, used in signing links and shown as the connector URL.</td></tr>
+              <tr><td><code>DATA_DIR</code></td><td>Where launches are stored. Mount a volume there in production.</td></tr>
+              <tr><td><code>PONS_NETWORK</code></td><td><code>mainnet</code> (default) or <code>testnet</code>.</td></tr>
+              <tr><td><code>MAX_DEV_BUY_BPS</code></td><td>Dev buy cap in basis points of supply. Default 500.</td></tr>
+              <tr><td><code>PONS_FACTORY</code>, <code>PONS_LAUNCH_AND_BUY</code></td><td>Override the pons contract addresses after a pons upgrade.</td></tr>
+              <tr><td><code>LINK_X</code>, <code>LINK_TELEGRAM</code>, <code>SUPPORT_EMAIL</code></td><td>Contact links shown in the footer and on the support page.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="changelog">
+          <h2>Changelog</h2>
+          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools. Launch and dev buy in one transaction through the pons launch-and-buy router. Predicted contract address on the signing page. Dev buy cap, pinned economics, whitelist check. Tokens page with live curve data.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+  <footer id="footer"></footer>
+  <script src="/site.js"></script>
+</body>
+</html>

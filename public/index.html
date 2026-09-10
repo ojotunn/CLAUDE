@@ -3,123 +3,121 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pronto — launch a token on pons by talking to Claude</title>
-  <meta name="description" content="Describe a token to Claude. Connect your wallet. Sign once. It's live on pons, Robinhood Chain.">
-  <link rel="stylesheet" href="/pronto.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%23ff7a1a'/%3E%3C/svg%3E">
+  <title>Cladeployer — launch a token on pons by talking to Claude</title>
+  <meta name="description" content="Describe a token to Claude, check the terms, sign once in your own wallet. Live on pons, Robinhood Chain. No forms, no keys handed over.">
+  <link rel="stylesheet" href="/site.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d97757'/%3E%3Cpath d='M10 21.5 16 9l6 12.5' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12.6 17.2h6.8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 </head>
 <body>
-  <div class="wrap">
-    <header class="top">
-      <a class="brand" href="/"><span class="dot"></span> Pronto</a>
-      <nav>
-        <a href="#how">How it works</a>
-        <a href="#safety">Safety</a>
-        <a href="#launches">Launches</a>
-        <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">pons docs</a>
-      </nav>
-    </header>
+  <header class="nav" id="nav"></header>
 
+  <main>
     <section class="hero">
-      <div class="pill">Claude connector · <b>pons v2</b> · Robinhood Chain</div>
-      <h1>Describe it to Claude.<br>Sign once. <em>It's live.</em></h1>
-      <p class="lead">Pronto is a connector for Claude that launches tokens on pons. You talk, Claude fills in the terms, you sign in your own wallet. No forms, no dashboard, no keys handed over.</p>
-      <div class="card">
-        <h2>Add Pronto to Claude</h2>
-        <p class="sub">In Claude, open <b>Customize → Connectors → Add custom connector</b>, paste this URL and save. Works on Free, Pro and Max.</p>
-        <div class="urlbox">
-          <code id="mcpUrl">…/mcp</code>
-          <button class="small" id="copyUrl">Copy</button>
+      <div class="wrap">
+        <div class="kicker"><i></i> A connector for Claude · pons v2 · Robinhood Chain</div>
+        <h1>Launch a token on pons<br>by talking to Claude.</h1>
+        <p class="lead">Describe it. Check the terms. Sign once in your own wallet. Cladeployer builds and simulates the transaction; your keys never leave your wallet.</p>
+        <div class="actions">
+          <a class="btn accent" href="#connect">Add to Claude</a>
+          <a class="btn ghost" href="/how">See how it works</a>
         </div>
       </div>
     </section>
 
-    <section id="how">
-      <div class="grid">
-        <div class="card step">
-          <div class="n">1</div>
-          <h2>Say it</h2>
-          <p>Tell Claude what to launch. <b>Name, ticker, a line about it, and how much ETH you want in as the first buyer.</b> Claude previews the exact terms against the chain before anything happens.</p>
-          <div class="example"><span>you</span>Launch a token called Night Owl, ticker OWL, "for people who ship at 3am". Put 0.05 ETH in as my dev buy.</div>
+    <section class="section tight">
+      <div class="wrap grid c2">
+        <div class="chat">
+          <div class="msg user"><div class="who">You</div><div class="body">Launch a token called <b>Night Owl</b>, ticker <b>OWL</b>, "for people who ship at 3am". Put 0.05 ETH in as my dev buy.</div></div>
+          <div class="msg ai"><div class="who">C</div><div class="body">Here is the launch, simulated against the chain:
+            <table>
+              <tr><td>Supply</td><td>1,000,000,000 OWL</td></tr>
+              <tr><td>Dev buy</td><td>0.05 ETH → about 28.6M OWL (2.86% of supply)</td></tr>
+              <tr><td>Launch fee</td><td>0.0005 ETH (pons)</td></tr>
+              <tr><td>Total</td><td><b>0.0505 ETH</b> + gas</td></tr>
+            </table>
+            Want me to prepare it for signing?</div></div>
+          <div class="msg user"><div class="who">You</div><div class="body">Yes.</div></div>
+          <div class="msg ai"><div class="who">C</div><div class="body">Ready. Open this link, connect your wallet and sign once:<br><span class="link"><span data-fill="host">…</span>/l/k3v9x2q1</span></div></div>
         </div>
-        <div class="card step">
-          <div class="n">2</div>
-          <h2>Check it</h2>
-          <p>Claude shows the supply, the launch fee, your dev buy and what share of supply it gets, the total cost, and any warnings. <b>You confirm, Claude hands you a link.</b></p>
-        </div>
-        <div class="card step">
-          <div class="n">3</div>
-          <h2>Sign it</h2>
-          <p>Open the link, connect your wallet, and <b>see the contract address before you sign</b>. One signature launches the token and fills your dev buy in the same transaction. The address comes back to the chat.</p>
+        <div class="card" id="connect">
+          <h2 style="font-size:28px">Add it to Claude</h2>
+          <p class="muted">Paste this URL as a custom connector. Free, Pro and Max plans can add it.</p>
+          <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
+          <ol class="steps">
+            <li><div><b>Open Claude</b><p>On the web or in the desktop app, go to <b>Customize → Connectors</b>.</p></div></li>
+            <li><div><b>Add custom connector</b><p>Paste the URL above, name it Cladeployer, save.</p></div></li>
+            <li><div><b>Say what to launch</b><p>Claude previews the terms first. Nothing happens until you confirm and sign.</p></div></li>
+          </ol>
         </div>
       </div>
     </section>
 
-    <section id="safety" class="grid">
-      <div class="card">
-        <h2>Your keys stay yours</h2>
-        <ul class="clean">
-          <li><b>Non-custodial.</b> Pronto builds and simulates the transaction. Your wallet signs and broadcasts it. Pronto never sees a key or a seed phrase.</li>
-          <li><b>Simulated first.</b> Every launch is dry-run against the chain from your wallet. The address you see on the signing page is the address you get.</li>
-          <li><b>Launch and dev buy in one transaction.</b> Routed through the pons launch-and-buy router, so there is no window for a sniper between the launch and your first buy.</li>
-          <li><b>Dev buy capped</b> at <span id="capPct">5%</span> of supply. Larger requests are reduced automatically.</li>
-          <li><b>Terms pinned.</b> The pons terms you were quoted are pinned into the transaction; if pons changes them, the launch reverts instead of silently repricing.</li>
+    <section class="section">
+      <div class="wrap">
+        <div class="stats">
+          <div class="stat"><div class="v"><span data-fill="fee">…</span> ETH</div><div class="k">pons launch fee, read live from the chain</div></div>
+          <div class="stat"><div class="v" data-fill="supply">…</div><div class="k">fixed supply per launch</div></div>
+          <div class="stat"><div class="v" data-fill="cap">5%</div><div class="k">dev buy cap, share of supply</div></div>
+          <div class="stat"><div class="v">0</div><div class="k">private keys held by Cladeployer</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section tight">
+      <div class="wrap">
+        <div class="kicker"><i></i> How it works</div>
+        <div class="grid c3">
+          <div class="card"><h3>1. Say it</h3><p class="muted">Name, ticker, a line about it, and how much ETH you want in as the first buyer. Claude turns that into a launch and simulates it on-chain.</p></div>
+          <div class="card"><h3>2. Check it</h3><p class="muted">You see the supply, the fee, your dev buy and its share of supply, the total cost and any warnings. You confirm, Claude hands you a link.</p></div>
+          <div class="card"><h3>3. Sign it</h3><p class="muted">Connect your wallet, see the exact contract address before signing, sign once. Launch and dev buy settle in the same transaction.</p></div>
+        </div>
+        <p style="margin-top:18px"><a href="/how">Read the full walkthrough →</a></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap grid c2">
+        <div>
+          <h2>Your keys stay yours.</h2>
+          <p class="muted">Cladeployer is a builder, not a custodian. It prepares a transaction, shows you what it will do, and hands it to your wallet. Signing and broadcasting happen on your side, every time.</p>
+        </div>
+        <ul class="checks">
+          <li><div><b>Non-custodial.</b> No seed phrase, no private key, no deposit. Only your address, and only after you connect.</div></li>
+          <li><div><b>Simulated first.</b> Every launch is dry-run from your wallet before you are asked to sign. The address on the page is the address you get.</div></li>
+          <li><div><b>One transaction.</b> Launch and dev buy go through the pons launch-and-buy router together. No window for a sniper between the two.</div></li>
+          <li><div><b>Terms pinned.</b> The pons terms you were quoted are locked into the transaction. If pons changes them, the launch reverts instead of repricing.</div></li>
+          <li><div><b>Dev buy capped</b> at <span data-fill="cap">5%</span> of supply. Larger requests are reduced automatically and you are told.</div></li>
         </ul>
       </div>
-      <div class="card">
-        <h2>What it costs</h2>
-        <ul class="clean">
-          <li><b>pons launch fee:</b> <span id="fee">…</span> ETH, read live from the chain.</li>
-          <li><b>Your dev buy:</b> whatever you choose, capped at <span id="capPct2">5%</span> of supply.</li>
-          <li><b>Gas:</b> paid by your wallet on Robinhood Chain.</li>
-          <li><b>Pronto:</b> free.</li>
-        </ul>
-        <h3>Supply</h3>
-        <p class="sub">Fixed at <span id="supply">…</span> tokens per launch. Graduates to a Uniswap v4 pool when the curve raises <span id="grad">…</span> ETH.</p>
-        <h3>Network</h3>
-        <p class="sub" id="net">Robinhood Chain</p>
+    </section>
+
+    <section class="section tight">
+      <div class="wrap">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+          <h2>Launched through Cladeployer</h2>
+          <a href="/tokens">All tokens →</a>
+        </div>
+        <div id="launchList"><div class="empty">Loading…</div></div>
       </div>
     </section>
+  </main>
 
-    <section id="launches" class="card">
-      <h2>Launched through Pronto</h2>
-      <div id="launchList"><div class="empty">Loading…</div></div>
-    </section>
-
-    <footer>
-      Built on <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">pons v2</a> · Robinhood Chain · Pronto does not custody assets and does not give financial advice. Tokens launched here are created by their deployers.
-    </footer>
-  </div>
-
+  <footer id="footer"></footer>
+  <script src="/site.js"></script>
   <script>
     (async () => {
-      const url = location.origin + '/mcp';
-      document.getElementById('mcpUrl').textContent = url;
-      document.getElementById('copyUrl').onclick = async (e) => {
-        try { await navigator.clipboard.writeText(url); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1500); } catch {}
-      };
+      const esc = window.siteEsc;
+      const box = document.getElementById('launchList');
       try {
-        const t = await fetch('/api/terms').then(r => r.json());
-        document.getElementById('fee').textContent = t.launchFeeEth;
-        document.getElementById('supply').textContent = Number(t.supply).toLocaleString('en-US');
-        document.getElementById('grad').textContent = t.graduatesAtEth;
-        document.getElementById('net').textContent = `${t.chain.name} (chain id ${t.chain.id})` + (t.chain.isTestnet ? ' — TESTNET' : '');
-        const cap = (t.devBuyCapBps / 100).toFixed(0) + '%';
-        document.getElementById('capPct').textContent = cap;
-        document.getElementById('capPct2').textContent = cap;
-      } catch {}
-      try {
-        const { launches } = await fetch('/api/launches').then(r => r.json());
-        const box = document.getElementById('launchList');
-        if (!launches.length) { box.innerHTML = '<div class="empty">Nothing yet. Be the first.</div>'; return; }
+        const { launches } = await fetch('/api/launches?limit=6').then((r) => r.json());
+        if (!launches.length) { box.innerHTML = '<div class="empty">Nothing launched yet. The first one could be yours.</div>'; return; }
         const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
-        box.innerHTML = '<table class="launches"><thead><tr><th>Token</th><th>Contract</th><th>Deployer</th><th>When</th></tr></thead><tbody>' +
-          launches.map(l => `<tr><td><b>${esc(l.name)}</b> <span class="sub">$${esc(l.symbol)}</span></td>` +
-            `<td class="addr"><a href="${l.links.pons}" target="_blank" rel="noopener">${short(l.token)}</a></td>` +
-            `<td class="addr">${short(l.deployer)}</td><td class="sub">${new Date(l.confirmedAt).toLocaleString('en-US')}</td></tr>`).join('') +
-          '</tbody></table>';
-      } catch {}
-      function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+        box.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr><th>Token</th><th>Contract</th><th>Deployer</th><th>When</th></tr></thead><tbody>' +
+          launches.map((l) => `<tr><td><b>${esc(l.name)}</b> <span class="muted">$${esc(l.symbol)}</span></td>` +
+            `<td class="addr"><a href="${esc(l.links.pons)}" target="_blank" rel="noopener">${short(l.token)}</a></td>` +
+            `<td class="addr">${short(l.deployer)}</td><td class="muted">${new Date(l.confirmedAt).toLocaleDateString('en-US')}</td></tr>`).join('') +
+          '</tbody></table></div>';
+      } catch { box.innerHTML = '<div class="empty">Could not load launches.</div>'; }
     })();
   </script>
 </body>

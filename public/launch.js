@@ -15,7 +15,6 @@
   window.dispatchEvent(new Event('eip6963:requestProvider'));
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
   const hexChain = () => '0x' + Number(terms.chain.id).toString(16);
 
   async function api(path, body) {
@@ -145,44 +144,42 @@
     if (!rec || !terms) return;
     const isLaunch = rec.kind === 'launch';
     const title = isLaunch ? `Launch ${esc(rec.summary?.name)}` : `Buy ${esc(rec.summary?.symbol)}`;
-    let html = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    let html = `<div class="head">
       <div><div class="big">${title}</div><div class="sub">${esc(terms.chain.name)}${terms.chain.isTestnet ? ' — TESTNET' : ''} · pons v2</div></div>
       ${statusChip()}
-    </div><hr class="soft">`;
+    </div>`;
 
-    // Resultado final.
     if (rec.status === 'live') {
       html += `<div class="notice ok">${esc(rec.summary?.name)} is live on pons.</div>
-        <div class="sub">Contract address</div>
+        <div class="label">Contract address</div>
         <div class="ca" id="ca">${esc(rec.token)}</div>
         <div class="actions">
-          <button class="small ghost" id="copyCa">Copy address</button>
-          <a class="btn small" href="${esc(rec.links.pons)}" target="_blank" rel="noopener">Open on pons</a>
-          <a class="btn small ghost" href="${esc(rec.links.explorerToken)}" target="_blank" rel="noopener">Explorer</a>
-          <a class="btn small ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
+          <button class="sm ghost" data-copy="#ca">Copy address</button>
+          <a class="btn sm accent" href="${esc(rec.links.pons)}" target="_blank" rel="noopener">Open on pons</a>
+          <a class="btn sm ghost" href="${esc(rec.links.explorerToken)}" target="_blank" rel="noopener">Explorer</a>
+          <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
         </div>
-        ${rec.tokensOut && rec.tokensOut !== '0' ? `<p class="sub">Your dev buy received ${esc(rec.tokensOut)} ${esc(rec.summary?.symbol)}.</p>` : ''}
-        <p class="sub">Tell Claude it's live, or ask it for <code>launch_status ${esc(rec.id)}</code>.</p>`;
+        ${rec.tokensOut && rec.tokensOut !== '0' ? `<p class="sub" style="margin-top:14px">Your dev buy received ${esc(rec.tokensOut)} ${esc(rec.summary?.symbol)}.</p>` : ''}
+        <p class="sub">Back in Claude, ask whether it went through. The status tool will answer with this address.</p>`;
       app.innerHTML = html;
-      document.getElementById('copyCa').onclick = () => navigator.clipboard.writeText(rec.token).catch(() => {});
       return;
     }
     if (rec.status === 'done') {
       html += `<div class="notice ok">Buy filled: ${esc(rec.tokensOut)} ${esc(rec.summary?.symbol)}.</div>
         <div class="actions">
-          <a class="btn small" href="${esc(rec.links.pons)}" target="_blank" rel="noopener">Open on pons</a>
-          <a class="btn small ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
+          <a class="btn sm accent" href="${esc(rec.links.pons)}" target="_blank" rel="noopener">Open on pons</a>
+          <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
         </div>`;
       app.innerHTML = html;
       return;
     }
 
-    html += `<div class="kv">${summaryRows().map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join('')}</div>`;
+    html += `<hr class="soft"><div class="kv">${summaryRows().map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join('')}</div>`;
 
     if (rec.predicted?.token && isLaunch) {
-      html += `<h3 style="margin:18px 0 6px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Will deploy at</h3>
+      html += `<div class="label">Will deploy at</div>
         <div class="ca">${esc(rec.predicted.token)}</div>
-        <p class="sub" style="margin:6px 0 0">Predicted from your wallet, the launch terms and this link's salt. Same address, guaranteed, or the transaction reverts.</p>`;
+        <p class="sub" style="margin:6px 0 0">Derived from your wallet, the pinned terms and this link's salt. Same address, or the transaction reverts.</p>`;
     }
 
     for (const w of rec.warnings || []) html += `<div class="notice warn">${esc(w)}</div>`;
@@ -200,7 +197,7 @@
       if (account && rec.wallet && account.toLowerCase() === rec.wallet.toLowerCase()) {
         html += `<div class="sub">Connected: <span class="mono">${esc(account)}</span> · balance ${esc(rec.funding?.balanceEth)} ETH</div>`;
         html += `<div class="actions">
-          <button id="sign" ${busy || !rec.funding?.ok ? 'disabled' : ''}>${busy ? 'Waiting for wallet…' : (isLaunch ? 'Sign & launch' : 'Sign & buy')}</button>
+          <button class="accent" id="sign" ${busy || !rec.funding?.ok ? 'disabled' : ''}>${busy ? 'Waiting for wallet…' : (isLaunch ? 'Sign & launch' : 'Sign & buy')}</button>
           <button class="ghost" id="recheck" ${busy ? 'disabled' : ''}>Re-check balance</button>
         </div>`;
       } else if (!wallets.length) {

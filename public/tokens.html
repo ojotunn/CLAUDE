@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tokens · Cladeployer</title>
+  <meta name="description" content="Every token launched through Cladeployer, with live price, ETH raised and graduation progress from pons.">
+  <link rel="stylesheet" href="/site.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23d97757'/%3E%3Cpath d='M10 21.5 16 9l6 12.5' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12.6 17.2h6.8' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="nav" id="nav"></header>
+  <main class="wrap">
+    <section class="hero" style="padding-bottom:24px">
+      <div class="kicker"><i></i> Tokens</div>
+      <h1 style="font-size:clamp(34px,5vw,54px)">Launched through Cladeployer.</h1>
+      <p class="lead">Live from pons on <span data-fill="network">Robinhood Chain</span>. Price, ETH raised and progress toward graduation, refreshed every minute.</p>
+    </section>
+
+    <section class="section tight">
+      <div class="stats" id="stats">
+        <div class="stat"><div class="v" id="sCount">…</div><div class="k">tokens launched</div></div>
+        <div class="stat"><div class="v" id="sMcap">…</div><div class="k">combined market cap (ETH)</div></div>
+        <div class="stat"><div class="v" id="sRaised">…</div><div class="k">ETH raised on curves</div></div>
+        <div class="stat"><div class="v" id="sGrad">…</div><div class="k">graduated to Uniswap v4</div></div>
+      </div>
+    </section>
+
+    <section class="section tight">
+      <div id="list"><div class="empty">Loading…</div></div>
+      <p class="small muted" style="margin-top:14px">Data comes from the pons v2 factory and bonding curves. Cladeployer lists what was launched through it; it does not curate, endorse or rate tokens.</p>
+    </section>
+  </main>
+  <footer id="footer"></footer>
+  <script src="/site.js"></script>
+  <script>
+    (async () => {
+      const esc = window.siteEsc;
+      const list = document.getElementById('list');
+      const fmt = (n, d = 4) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+      const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+      try {
+        const { tokens, totals } = await fetch('/api/tokens').then((r) => r.json());
+        document.getElementById('sCount').textContent = totals.count;
+        document.getElementById('sMcap').textContent = fmt(totals.marketCapEth, 2);
+        document.getElementById('sRaised').textContent = fmt(totals.raisedEth, 3);
+        document.getElementById('sGrad').textContent = totals.graduated;
+        if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Cladeployer to Claude and be the first.</div>'; return; }
+        list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr><th>Token</th><th>Price (ETH)</th><th>Market cap (ETH)</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th></tr></thead><tbody>' +
+          tokens.map((t) => {
+            const prog = t.info?.graduationProgress ?? 0;
+            const phase = t.info?.graduated ? 'graduated' : `${fmt(prog, 1)}%`;
+            return `<tr>
+              <td><a href="${esc(t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span><div class="addr small muted">${short(t.token)}</div></td>
+              <td class="mono">${t.info ? fmt(t.info.priceEth, 10) : '—'}</td>
+              <td class="mono">${t.info ? fmt(t.info.marketCapEth, 3) : '—'}</td>
+              <td class="mono">${t.info ? fmt(t.info.raisedEth, 4) : '—'} / ${t.info ? fmt(t.info.graduationThresholdEth, 1) : '—'}</td>
+              <td><div class="bar"><i style="width:${Math.min(100, prog)}%"></i></div><div class="small muted">${phase}</div></td>
+              <td class="addr">${short(t.deployer)}</td>
+              <td class="muted small">${new Date(t.confirmedAt).toLocaleDateString('en-US')}</td>
+            </tr>`;
+          }).join('') + '</tbody></table></div>';
+      } catch { list.innerHTML = '<div class="empty">Could not load tokens.</div>'; }
+    })();
+  </script>
+</body>
+</html>

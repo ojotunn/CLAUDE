@@ -29,7 +29,7 @@ async function callTool(name, args = {}) {
 before(async () => {
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
-  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pronto-test-'));
+  dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cladeployer-test-'));
   child = spawn(process.execPath, ['src/server.js'], {
     env: { ...process.env, PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -42,7 +42,7 @@ before(async () => {
     await sleep(100);
     if (i === 99) throw new Error(`server did not start:\n${out}`);
   }
-  client = new Client({ name: 'pronto-test', version: '0.0.0' });
+  client = new Client({ name: 'cladeployer-test', version: '0.0.0' });
   await client.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`)));
 });
 
@@ -73,7 +73,7 @@ test('launch_terms reads the live protocol terms', async () => {
 
 test('preview_launch simulates a launch with a dev buy', async () => {
   const { data, isError, text } = await callTool('preview_launch', {
-    name: 'Pronto Test', symbol: '$ptest', description: 'never launched', devBuyEth: '0.01', creatorTaxBps: 100,
+    name: 'Cladeployer Test', symbol: '$ptest', description: 'never launched', devBuyEth: '0.01', creatorTaxBps: 100,
   });
   assert.equal(isError, false, text);
   assert.equal(data.symbol, 'PTEST');
@@ -196,5 +196,19 @@ test('HTTP guards: GET /mcp is 405, unknown launch is 404, recent list is empty'
   assert.deepEqual(launches, []);
   const home = await fetch(`${base}/`);
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /Add Pronto to Claude/);
+  assert.match(await home.text(), /Add it to Claude/);
+});
+
+test('site pages and enriched token feed are served', async () => {
+  for (const p of ['/how', '/tokens', '/docs', '/support', '/privacy', '/terms']) {
+    const r = await fetch(`${base}${p}`);
+    assert.equal(r.status, 200, p);
+    assert.match(await r.text(), /site\.js/, p);
+  }
+  const { tokens, totals } = await fetch(`${base}/api/tokens`).then((r) => r.json());
+  assert.deepEqual(tokens, []);
+  assert.equal(totals.count, 0);
+  const terms = await fetch(`${base}/api/terms`).then((r) => r.json());
+  assert.equal(terms.mcpUrl, `${base}/mcp`);
+  assert.ok('links' in terms);
 });

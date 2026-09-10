@@ -1,5 +1,5 @@
 @echo off
-title Pronto
+title Cladeployer
 cd /d "%~dp0"
 if not exist node_modules (
   echo Installing dependencies...
@@ -9,7 +9,7 @@ if not exist .env (
   echo No .env found, using defaults. Copy .env.example to .env to customize.
 )
 echo.
-echo Starting Pronto on http://localhost:8436
+echo Starting Cladeployer on http://localhost:8436
 echo MCP endpoint: http://localhost:8436/mcp
 echo.
 node --env-file-if-exists=.env srcserver.js

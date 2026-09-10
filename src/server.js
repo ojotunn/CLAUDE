@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR } from './config.js';
+import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL } from './config.js';
 import { createMcpServer } from './mcp.js';
 import * as chain from './chain.js';
 import * as launches from './launches.js';
@@ -71,10 +71,35 @@ api.get('/terms', async (_req, res) => {
     graduatesAtEth: t.graduationThresholdEth,
     devBuyCapBps: LIMITS.maxDevBuyBps,
     mcpUrl: `${PUBLIC_URL}/mcp`,
+    links: LINKS,
+    repo: REPO_URL,
   });
 });
 
 api.get('/launches', (req, res) => res.json({ launches: launches.recent(req.query.limit) }));
+
+// Pagina de tokens: a lista dos lancamentos com o estado vivo da curva. Cache
+// de 60s por token para nao bater na RPC a cada visita.
+const infoCache = new Map();
+async function cachedInfo(token) {
+  const hit = infoCache.get(token);
+  if (hit && Date.now() - hit.at < 60_000) return hit.value;
+  const value = await chain.tokenInfo(token).catch(() => null);
+  infoCache.set(token, { at: Date.now(), value });
+  return value;
+}
+api.get('/tokens', async (req, res) => {
+  const list = launches.recent(req.query.limit || 100);
+  const tokens = await Promise.all(list.map(async (l) => ({ ...l, info: await cachedInfo(l.token) })));
+  const totals = tokens.reduce((acc, t) => {
+    if (!t.info) return acc;
+    acc.marketCapEth += t.info.marketCapEth || 0;
+    acc.raisedEth += Number(t.info.raisedEth || 0);
+    if (t.info.graduated) acc.graduated++;
+    return acc;
+  }, { count: tokens.length, marketCapEth: 0, raisedEth: 0, graduated: 0 });
+  res.json({ tokens, totals });
+});
 api.get('/launch/:id', (req, res) => res.json(launches.status(req.params.id)));
 api.post('/launch/:id/bind', async (req, res) => res.json(await launches.bind(req.params.id, req.body?.wallet)));
 api.post('/launch/:id/tx', async (req, res) => res.json(await launches.submitted(req.params.id, req.body?.hash)));
