@@ -84,6 +84,10 @@
   function render() {
     if (!a) return;
     const initials = esc((a.symbol || '?').slice(0, 3));
+    // qual modo pronto bate com a divisao atual (ou nenhum = custom)
+    const activePreset = Object.entries(a.presets || {}).find(([, p]) =>
+      p.buybackBps === a.rules.buybackBps && p.airdropBps === a.rules.airdropBps
+      && (p.salaryBps || 0) === (a.rules.salaryBps || 0) && (p.raffleBps || 0) === (a.rules.raffleBps || 0))?.[0] || null;
     let h = `<div class="agent-head">
       <div class="avatar">${a.avatar ? `<img src="${esc(a.avatar)}" alt="">` : initials}</div>
       <div style="flex:1;min-width:220px">
@@ -151,7 +155,8 @@
         <label>What it does with its fees</label>
         ${a.pendingRules ? `<div class="notice warn">Proposed from Claude: ${a.pendingRules.buybackBps / 100}% buy back &amp; burn, ${a.pendingRules.airdropBps / 100}% airdrop. <button class="sm" id="applyRules" ${busy ? 'disabled' : ''} style="margin-left:8px">Apply</button></div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          ${Object.entries(a.presets || {}).map(([k, p]) => `<button class="sm ghost" data-preset="${k}" ${busy ? 'disabled' : ''}>${k} ${p.buybackBps / 100}/${p.airdropBps / 100}</button>`).join('')}
+          ${Object.entries(a.presets || {}).map(([k, p]) => { const on = activePreset === k; return `<button class="sm ${on ? 'accent' : 'ghost'}" data-preset="${k}" aria-pressed="${on}" ${busy ? 'disabled' : ''}>${on ? '✓ ' : ''}${k} ${p.buybackBps / 100}/${p.airdropBps / 100}${p.salaryBps ? ` +${p.salaryBps / 100} salary` : ''}${p.raffleBps ? ` +${p.raffleBps / 100} raffle` : ''}</button>`; }).join('')}
+          ${activePreset ? '' : '<span class="chip">custom split</span>'}
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px;align-items:end">
           <div><span class="sub">buy back &amp; burn %</span><input type="text" id="rBuy" value="${a.rules.buybackBps / 100}" inputmode="decimal"></div>
