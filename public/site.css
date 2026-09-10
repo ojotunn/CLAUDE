@@ -83,6 +83,7 @@ button:disabled { opacity: .45; cursor: default; }
 .msg .body b { font-weight: 600; }
 .msg table { border-collapse: collapse; margin: 8px 0; font-size: 14px; }
 .msg td { padding: 3px 14px 3px 0; color: var(--muted); }
+.msg td:first-child { white-space: nowrap; }
 .msg td:last-child { color: var(--text); }
 .msg .link { display: inline-block; margin-top: 6px; padding: 6px 10px; background: var(--accent-soft); border-radius: 8px; color: var(--accent-hover); font-family: var(--mono); font-size: 13px; }
 
