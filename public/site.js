@@ -15,7 +15,7 @@
   const footer = document.getElementById('footer');
   if (footer) footer.innerHTML = `<div class="wrap">
     <div class="cols">
-      <div><a class="brand" href="/">${MARK}<span>Claudeploy</span></a><div class="small muted" style="margin-top:8px">Launch a token by talking to Claude. Give it an agent that runs itself.</div></div>
+      <div><a class="brand" href="/">${MARK}<span>Claudeploy</span></a><div class="small muted" style="margin-top:8px">Launch a token by talking to Claude. Then give it an agent that runs itself.</div></div>
       <div class="links">
         ${LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}
         <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
