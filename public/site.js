@@ -9,7 +9,7 @@
   if (nav) nav.innerHTML = `<div class="wrap navrow">
     <a class="brand" href="/">${MARK}<span>Claudeploy</span></a>
     <nav>${LINKS.map(([h, t]) => `<a href="${h}" class="${path === h ? 'active' : ''}">${t}</a>`).join('')}</nav>
-    <a class="btn sm" href="/docs#connect">Add to Claude</a>
+    <div class="navright"><span id="navExtra"></span><a class="btn sm" href="/docs#connect">Add to Claude</a></div>
   </div>`;
 
   const footer = document.getElementById('footer');
@@ -49,6 +49,18 @@
       const v = values[el.dataset.fill];
       if (v != null) el.textContent = v;
     });
+    // topo: X e o token oficial, ao lado do botao
+    const extra = document.getElementById('navExtra');
+    if (extra) {
+      const X_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>`;
+      const parts = [];
+      if (t.officialToken) {
+        const a = t.officialToken.address;
+        parts.push(`<a class="navtoken" href="${esc(t.officialToken.pons)}" target="_blank" rel="noopener" title="${esc(a)}">$${esc(t.officialToken.symbol)} <span class="mono">${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</span></a><button class="navcopy" data-copy="${esc(a)}" title="Copy contract address">copy</button>`);
+      }
+      if (t.links?.x) parts.push(`<a class="navx" href="${esc(t.links.x)}" target="_blank" rel="noopener" aria-label="X">${X_ICON}</a>`);
+      extra.innerHTML = parts.join('');
+    }
     const social = document.getElementById('footSocial');
     if (social) {
       const l = t.links || {};

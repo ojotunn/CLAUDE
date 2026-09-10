@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL } from './config.js';
+import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL, OFFICIAL_TOKEN, PONS_TOKEN_URL } from './config.js';
 import { createMcpServer } from './mcp.js';
 import * as chain from './chain.js';
 import * as launches from './launches.js';
@@ -102,6 +102,7 @@ api.get('/terms', async (_req, res) => {
     mcpUrl: `${PUBLIC_URL}/mcp`,
     links: LINKS,
     repo: REPO_URL,
+    officialToken: OFFICIAL_TOKEN ? { ...OFFICIAL_TOKEN, pons: PONS_TOKEN_URL.replace('{token}', OFFICIAL_TOKEN.address), explorer: `${CHAIN.explorer}/token/${OFFICIAL_TOKEN.address}` } : null,
   });
 });
 

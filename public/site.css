@@ -47,7 +47,17 @@ p { margin: 0 0 1em; }
 .nav nav { display: flex; gap: 22px; }
 .nav nav a { color: var(--muted); font-size: 15px; }
 .nav nav a:hover, .nav nav a.active { color: var(--text); text-decoration: none; }
-@media (max-width: 720px) { .nav nav { display: none; } }
+.navright { display: flex; align-items: center; gap: 10px; }
+#navExtra { display: inline-flex; align-items: center; gap: 6px; }
+.navtoken { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-hover); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.navtoken .mono { font-size: 12px; color: var(--accent-hover); opacity: .8; }
+.navtoken:hover { text-decoration: none; background: #f2d6c8; }
+.navcopy { font: inherit; font-size: 12px; font-weight: 600; padding: 7px 9px; border-radius: 8px; background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.navcopy:hover { background: var(--subtle); color: var(--text); }
+.navx { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); color: var(--text); }
+.navx:hover { background: var(--subtle); text-decoration: none; }
+.navx svg { width: 16px; height: 16px; fill: currentColor; }
+@media (max-width: 720px) { .nav nav { display: none; } .navtoken .mono, .navcopy { display: none; } }
 
 /* botões */
 .btn, button { font: inherit; font-weight: 600; border: 1px solid transparent; border-radius: 10px; padding: 12px 20px; background: var(--text); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; line-height: 1.2; }

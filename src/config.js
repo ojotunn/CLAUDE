@@ -64,3 +64,7 @@ export const LINKS = {
   telegram: process.env.LINK_TELEGRAM || null,
   email: process.env.SUPPORT_EMAIL || null,
 };
+// Token oficial da casa (lancado fora do fluxo): aparece no topo do site.
+export const OFFICIAL_TOKEN = /^0x[0-9a-fA-F]{40}$/.test(process.env.OFFICIAL_TOKEN || '')
+  ? { address: process.env.OFFICIAL_TOKEN, symbol: (process.env.OFFICIAL_SYMBOL || 'CLAUDEPLOY').replace(/^\$/, '').toUpperCase() }
+  : null;
