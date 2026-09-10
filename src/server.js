@@ -186,7 +186,14 @@ app.use('/api', api);
 app.get('/l/:id', (_req, res) => res.sendFile(path.join(publicDir, 'launch.html')));
 app.get('/t/:token', (_req, res) => res.sendFile(path.join(publicDir, 'agent.html')));
 app.use('/avatars', express.static(path.join(DATA_DIR, 'avatars'), { maxAge: '1h', index: false }));
-app.use(express.static(publicDir, { extensions: ['html'], maxAge: '5m' }));
+// HTML, JS e CSS sempre revalidam (o navegador pergunta e recebe 304 se nada
+// mudou); so imagens da marca ficam em cache longo.
+app.use(express.static(publicDir, {
+  extensions: ['html'],
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', /\.(png|jpg|gif|webp|svg|ico)$/i.test(filePath) ? 'public, max-age=86400' : 'no-cache');
+  },
+}));
 
 // Erros: os de usuario viram 4xx com mensagem; o resto vira 500 sem vazar nada.
 app.use((err, _req, res, _next) => {
