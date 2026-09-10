@@ -32,6 +32,8 @@ const TREASURY = process.env.TREASURY_ADDRESS && /^0x[0-9a-fA-F]{40}$/.test(proc
 const RESERVE = parseEther(process.env.AGENT_RESERVE_ETH || '0.001');
 const MIN_ACTION = parseEther(process.env.AGENT_MIN_ACTION_ETH || '0.002');
 const MIN_SWEEP = parseEther('0.0005');
+export const MIN_GAS = parseEther(process.env.AGENT_MIN_GAS_ETH || '0.0005');   // abaixo disto nao consegue nem sacar
+export const KICKSTART_ETH = process.env.AGENT_KICKSTART_ETH || '0.002';        // sugestao de gas inicial
 const MAX_AIRDROP = 20;
 export const INTERVAL_MS = Number(process.env.AGENT_INTERVAL_MIN || 5) * 60_000;
 
@@ -216,6 +218,19 @@ export async function tick(rec) {
     return (await chain.tokenBalance(rec.token, rec.agent)) - before;
   };
   try {
+    // Sem gas nao ha o que fazer: a primeira coleta e uma transacao. Avisa
+    // (uma vez por hora) e espera alguem mandar o gas inicial.
+    const gasBal = await chain.getBalance(rec.agent);
+    if (gasBal < MIN_GAS) {
+      const last = rec.log.find((l) => l.kind === 'needs_gas');
+      if (!last || Date.now() - Date.parse(last.at) > 3600_000) {
+        rec.log.unshift({ at: now(), kind: 'needs_gas', text: `I have ${formatEther(gasBal)} ETH and need about ${formatEther(MIN_GAS)} ETH of gas to collect my fees. Anyone can send it to ${rec.agent}.`, actions: [], txs: [] });
+        rec.log = rec.log.slice(0, 200);
+      }
+      rec.lastTickAt = now();
+      agents.put(rec);
+      return;
+    }
     const flags = await chain.curveFlags(rec.curve);
     const info = await chain.tokenInfo(rec.token).catch(() => null);
 
@@ -538,6 +553,8 @@ export async function liveView(token) {
   if (rec.status === 'active') unswept = await chain.curveUnswept(rec.curve).catch(() => 0n);
   v.balanceEth = formatEther(balance);
   v.pendingEth = formatEther(escrow + unswept);
+  v.needsGas = rec.status === 'active' && balance < MIN_GAS;
+  v.kickstartEth = KICKSTART_ETH;
   return v;
 }
 

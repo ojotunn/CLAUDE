@@ -179,6 +179,7 @@
     }
     if (rec.status === 'done' && isHandover) {
       html += `<div class="notice ok">Done. $${esc(rec.summary?.symbol)} now runs its own wallet.</div>
+        <div class="notice warn">One more thing: the agent wallet starts empty and its first move costs gas. On the agent page, press <b>Send ETH for gas</b> once (about 0.002 ETH). After that it pays for itself.</div>
         <div class="actions">
           <a class="btn sm accent" href="/t/${esc(rec.token)}">Open the agent page</a>
           <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>

@@ -103,6 +103,10 @@
         ${a.handoverUrl ? `<div style="margin-top:8px"><a class="btn sm accent" href="${esc(a.handoverUrl)}">Open the handover link</a></div>` : ''}</div>`;
     }
     if (a.status === 'released') h += `<div class="notice">Released. Fees and balance went back to the creator.</div>`;
+    if (a.needsGas) {
+      h += `<div class="notice warn"><b>Needs gas to start.</b> The agent wallet holds ${esc(a.balanceEth)} ETH and its first move (collecting fees) costs gas. Send it about ${esc(a.kickstartEth)} ETH once; it pays for itself from then on.
+        <div class="actions" style="margin-top:8px"><button class="sm accent" id="kick" ${busy ? 'disabled' : ''}>Send ${esc(a.kickstartEth)} ETH for gas</button><button class="sm ghost" data-copy="${esc(a.agent)}">Copy agent address</button></div></div>`;
+    }
 
     h += `<div class="stats" style="margin:18px 0">
       <div class="stat"><div class="v">${fmt(a.balanceEth)}</div><div class="k">ETH in the agent wallet</div></div>
@@ -153,27 +157,34 @@
           <button class="sm ghost" id="pickAvatar" ${busy ? 'disabled' : ''}>Upload image</button>
         </div>
         <label>What it does with its fees</label>
-        ${a.pendingRules ? `<div class="notice warn">Proposed from Claude: ${a.pendingRules.buybackBps / 100}% buy back &amp; burn, ${a.pendingRules.airdropBps / 100}% airdrop. <button class="sm" id="applyRules" ${busy ? 'disabled' : ''} style="margin-left:8px">Apply</button></div>` : ''}
+        ${a.pendingRules ? `<div class="notice warn">Proposed from Claude: ${a.pendingRules.buybackBps / 100}% buy back &amp; burn, ${a.pendingRules.airdropBps / 100}% airdrop${a.pendingRules.salaryBps ? `, ${a.pendingRules.salaryBps / 100}% salary` : ''}${a.pendingRules.raffleBps ? `, ${a.pendingRules.raffleBps / 100}% raffle` : ''}. <button class="sm" id="applyRules" ${busy ? 'disabled' : ''} style="margin-left:8px">Apply</button></div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          ${Object.entries(a.presets || {}).map(([k, p]) => { const on = activePreset === k; return `<button class="sm ${on ? 'accent' : 'ghost'}" data-preset="${k}" aria-pressed="${on}" ${busy ? 'disabled' : ''}>${on ? '✓ ' : ''}${k} ${p.buybackBps / 100}/${p.airdropBps / 100}${p.salaryBps ? ` +${p.salaryBps / 100} salary` : ''}${p.raffleBps ? ` +${p.raffleBps / 100} raffle` : ''}</button>`; }).join('')}
-          ${activePreset ? '' : '<span class="chip">custom split</span>'}
+          ${Object.entries(a.presets || {}).map(([k, p]) => { const on = activePreset === k; return `<button class="sm ${on ? 'accent' : 'ghost'}" data-preset="${k}" aria-pressed="${on}" ${busy ? 'disabled' : ''}>${on ? '✓ ' : ''}${k}</button>`; }).join('')}
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px;align-items:end">
-          <div><span class="sub">buy back &amp; burn %</span><input type="text" id="rBuy" value="${a.rules.buybackBps / 100}" inputmode="decimal"></div>
-          <div><span class="sub">airdrop %</span><input type="text" id="rAir" value="${a.rules.airdropBps / 100}" inputmode="decimal"></div>
-          <div><span class="sub">creator salary %</span><input type="text" id="rSal" value="${a.rules.salaryBps / 100}" inputmode="decimal"></div>
-          <div><span class="sub">raffle %</span><input type="text" id="rRaf" value="${a.rules.raffleBps / 100}" inputmode="decimal"></div>
-          <div><span class="sub">dip buy at -%</span><input type="text" id="rDip" value="${a.rules.dipBuyPct || 0}" inputmode="decimal"></div>
-          <div><span class="sub">whale post ≥ ETH</span><input type="text" id="rWhale" value="${esc(a.rules.whaleEth || '0.05')}" inputmode="decimal"></div>
-          <div><span class="sub">quiet hours UTC (e.g. 22-8)</span><input type="text" id="rQuiet" value="${a.rules.quietHours ? `${a.rules.quietHours.from}-${a.rules.quietHours.to}` : ''}" placeholder="off"></div>
-          <div><span class="sub">min minutes between posts</span><input type="text" id="rMinPost" value="${a.rules.minPostMin || 0}" inputmode="numeric"></div>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:14px">
+        <p class="sub" style="margin:8px 0 0">Now: ${esc(a.split)}.</p>
+        <details style="margin-top:6px;border:0;padding:6px 0"><summary style="font-weight:500;color:var(--muted);font-size:14px">Custom split</summary>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:8px;align-items:end">
+            <div><span class="sub">buy back &amp; burn %</span><input type="text" id="rBuy" value="${a.rules.buybackBps / 100}" inputmode="decimal"></div>
+            <div><span class="sub">airdrop %</span><input type="text" id="rAir" value="${a.rules.airdropBps / 100}" inputmode="decimal"></div>
+            <div><span class="sub">creator salary %</span><input type="text" id="rSal" value="${a.rules.salaryBps / 100}" inputmode="decimal"></div>
+            <div><span class="sub">raffle %</span><input type="text" id="rRaf" value="${a.rules.raffleBps / 100}" inputmode="decimal"></div>
+          </div>
+          <div class="sub" style="margin-top:6px">rent ${a.rules.rentBps / 100}% is fixed; whatever is left stays as gas reserve.</div>
+        </details>
+        <label>Behavior</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:14px;align-items:center">
           <label style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rLoyal" ${b(a.rules.loyaltyOnly)}> airdrop only to holders who never sold</label>
           <label style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rMile" ${b(a.rules.milestones)}> post at graduation milestones</label>
           <label style="display:inline-flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rCollect" ${b(a.rules.collectOnly)}> collect only, spend nothing</label>
+          <label style="display:inline-flex;gap:6px;align-items:center;margin:0">buy the dip when price drops <input type="text" id="rDip" value="${a.rules.dipBuyPct || 0}" inputmode="decimal" style="width:60px"> % (0 = off)</label>
         </div>
-        <div class="sub" style="margin-top:6px">rent ${a.rules.rentBps / 100}% · the rest stays as gas reserve · <button class="sm ghost" id="saveRules" ${busy ? 'disabled' : ''}>Save settings</button></div>
+        <label>Posting</label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:end">
+          <div><span class="sub">post on buys ≥ ETH</span><input type="text" id="rWhale" value="${esc(a.rules.whaleEth || '0.05')}" inputmode="decimal"></div>
+          <div><span class="sub">quiet hours, UTC (e.g. 22-8)</span><input type="text" id="rQuiet" value="${a.rules.quietHours ? `${a.rules.quietHours.from}-${a.rules.quietHours.to}` : ''}" placeholder="off"></div>
+          <div><span class="sub">min minutes between posts</span><input type="text" id="rMinPost" value="${a.rules.minPostMin || 0}" inputmode="numeric"></div>
+        </div>
+        <div class="actions" style="margin-top:10px"><button class="sm" id="saveRules" ${busy ? 'disabled' : ''}>Save settings</button></div>
         <label>Telegram channel ${a.telegramConnected ? '<span class="chip">connected</span>' : ''}</label>
         <p class="sub" style="margin:0 0 6px">Create a bot with @BotFather, add it to your channel or group as admin, then paste the bot token and the chat id (like -1001234567890 or @yourchannel).</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="password" id="tgTok" placeholder="Bot token" autocomplete="off" style="flex:2;min-width:200px"><input type="text" id="tgChat" placeholder="Chat id" autocomplete="off" style="flex:1;min-width:140px"></div>
@@ -204,6 +215,18 @@
 
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
     on('login', login);
+    on('kick', () => act('Gas sent. The agent picks it up on its next cycle.', async () => {
+      const w = walletList()[0]; if (!w) throw new Error('no browser wallet found');
+      const [acc] = await w.provider.request({ method: 'eth_requestAccounts' });
+      const t = await fetch('/api/terms').then((r) => r.json());
+      const hex = '0x' + Number(t.chain.id).toString(16);
+      try { await w.provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] }); } catch (e) {
+        if (!(e?.code === 4902 || /unrecognized|not added|unknown chain/i.test(e?.message || ''))) throw e;
+        await w.provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: t.chain.name, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [t.chain.rpc], blockExplorerUrls: [t.chain.explorer] }] });
+      }
+      const wei = BigInt(Math.round(Number(a.kickstartEth) * 1e6)) * 1000000000000n;
+      await w.provider.request({ method: 'eth_sendTransaction', params: [{ from: acc, to: a.agent, value: '0x' + wei.toString(16), chainId: hex }] });
+    }));
     on('logout', () => { session = null; try { localStorage.removeItem(`cd-session-${token.toLowerCase()}`); } catch {} render(); });
     on('saveVibe', () => act('Personality saved.', () => api(`/api/agent/${token}/vibe`, { method: 'POST', json: { vibe: document.getElementById('vibe').value } })));
     on('saveRules', () => act('Settings saved.', () => api(`/api/agent/${token}/rules`, { method: 'POST', json: {
