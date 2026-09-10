@@ -25,7 +25,6 @@
         <a href="#guardrails">Guardrails</a>
         <a href="#network">Network &amp; contracts</a>
         <a href="#api">Public API</a>
-        <a href="#selfhost">Self-host</a>
         <a href="#changelog">Changelog</a>
       </aside>
       <article>
@@ -38,8 +37,8 @@
             <li><div><b>Add custom connector</b><p>Paste the URL above. Name it Cladeployer. No OAuth, no API key.</p></div></li>
             <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure Cladeployer is on.</p></div></li>
           </ol>
-          <h3>Plans</h3>
-          <p class="muted">Free (one custom connector), Pro and Max can add it by URL. On Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
+          <h3>Which Claude plans work</h3>
+          <p class="muted">These are Claude's own subscription plans; Cladeployer has no plans and costs nothing. Claude Free (one custom connector allowed), Pro and Max can add it by URL. On Claude Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
         </section>
 
         <section id="prompts">
@@ -129,28 +128,6 @@ GET  /api/launch/:id          status of one launch or buy
 POST /api/launch/:id/bind     { wallet }  simulate from this wallet, return the unsigned tx
 POST /api/launch/:id/tx       { hash }    record the signed transaction hash
 POST /mcp                     the MCP endpoint Claude talks to</pre>
-        </section>
-
-        <section id="selfhost">
-          <h2>Self-host</h2>
-          <p class="muted">Cladeployer is open source: <a href="https://github.com/ojotunn/CLAUDE" target="_blank" rel="noopener">github.com/ojotunn/CLAUDE</a>. It is one Node.js process with a JSON file for storage.</p>
-          <pre>git clone https://github.com/ojotunn/CLAUDE.git cladeployer
-cd cladeployer
-npm install
-cp .env.example .env     # set PUBLIC_URL to your public HTTPS address
-npm start                # http://localhost:8436
-npm test                 # 13 end-to-end checks against the chain</pre>
-          <table class="params">
-            <thead><tr><th>Variable</th><th>Meaning</th></tr></thead>
-            <tbody>
-              <tr><td><code>PUBLIC_URL</code></td><td>Public HTTPS origin, used in signing links and shown as the connector URL.</td></tr>
-              <tr><td><code>DATA_DIR</code></td><td>Where launches are stored. Mount a volume there in production.</td></tr>
-              <tr><td><code>PONS_NETWORK</code></td><td><code>mainnet</code> (default) or <code>testnet</code>.</td></tr>
-              <tr><td><code>MAX_DEV_BUY_BPS</code></td><td>Dev buy cap in basis points of supply. Default 500.</td></tr>
-              <tr><td><code>PONS_FACTORY</code>, <code>PONS_LAUNCH_AND_BUY</code></td><td>Override the pons contract addresses after a pons upgrade.</td></tr>
-              <tr><td><code>LINK_X</code>, <code>LINK_TELEGRAM</code>, <code>SUPPORT_EMAIL</code></td><td>Contact links shown in the footer and on the support page.</td></tr>
-            </tbody>
-          </table>
         </section>
 
         <section id="changelog">

@@ -56,7 +56,8 @@ export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
 export const PONS_TOKEN_URL = process.env.PONS_TOKEN_URL || 'https://www.ponsfamily.com/launchpad/{token}';
 export const APP_NAME = 'Cladeployer';
 export const VERSION = '0.1.0';
-export const REPO_URL = 'https://github.com/ojotunn/CLAUDE';
+// Link do codigo-fonte no rodape. Vazio = o site nao expoe repositorio nenhum.
+export const REPO_URL = process.env.REPO_URL || null;
 // Contatos mostrados no rodape e na pagina de suporte (vazio = nao mostra).
 export const LINKS = {
   x: process.env.LINK_X || null,

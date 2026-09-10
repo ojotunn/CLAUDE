@@ -20,7 +20,6 @@
         ${LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}
         <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
         <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">pons docs</a>
-        <a id="footRepo" href="https://github.com/ojotunn/CLAUDE" target="_blank" rel="noopener">Source</a>
         <span id="footSocial"></span>
       </div>
     </div>
@@ -51,10 +50,12 @@
       if (v != null) el.textContent = v;
     });
     const social = document.getElementById('footSocial');
-    if (social && t.links) {
-      social.innerHTML = [t.links.x && `<a href="${esc(t.links.x)}" target="_blank" rel="noopener">X</a>`,
-        t.links.telegram && `<a href="${esc(t.links.telegram)}" target="_blank" rel="noopener">Telegram</a>`,
-        t.links.email && `<a href="mailto:${esc(t.links.email)}">Email</a>`].filter(Boolean).join(' ');
+    if (social) {
+      const l = t.links || {};
+      social.innerHTML = [l.x && `<a href="${esc(l.x)}" target="_blank" rel="noopener">X</a>`,
+        l.telegram && `<a href="${esc(l.telegram)}" target="_blank" rel="noopener">Telegram</a>`,
+        l.email && `<a href="mailto:${esc(l.email)}">Email</a>`,
+        t.repo && `<a href="${esc(t.repo)}" target="_blank" rel="noopener">Source</a>`].filter(Boolean).join(' ');
     }
     return t;
   }).catch(() => null);
