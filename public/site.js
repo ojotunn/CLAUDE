@@ -1,6 +1,6 @@
 // Partes comuns do site: navegacao, rodape, dados vivos da chain e botoes de copiar.
 (() => {
-  const MARK = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#d97757"/><path d="M10 21.5 16 9l6 12.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.6 17.2h6.8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+  const MARK = `<img src="/brand/icon-64.png" width="28" height="28" alt="">`;
   const LINKS = [['/how', 'How it works'], ['/tokens', 'Tokens'], ['/docs', 'Docs'], ['/support', 'Support']];
   const path = location.pathname.replace(/\/$/, '') || '/';
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

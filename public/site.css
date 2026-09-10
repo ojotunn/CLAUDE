@@ -43,7 +43,7 @@ p { margin: 0 0 1em; }
 .navrow { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
 .brand:hover { text-decoration: none; }
-.brand svg { width: 28px; height: 28px; }
+.brand svg, .brand img { width: 28px; height: 28px; border-radius: 8px; }
 .nav nav { display: flex; gap: 22px; }
 .nav nav a { color: var(--muted); font-size: 15px; }
 .nav nav a:hover, .nav nav a.active { color: var(--text); text-decoration: none; }
