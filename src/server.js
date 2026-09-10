@@ -17,6 +17,20 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(express.json({ limit: '256kb' }));
 
+// Dominio canonico: paginas em outro host (www, dominio do Railway) redirecionam.
+// /mcp e /api ficam de fora: um conector ja colado com a URL antiga continua
+// funcionando, porque cliente MCP nao segue redirect de POST.
+const CANONICAL_HOST = process.env.CANONICAL_HOST || null;
+if (CANONICAL_HOST) {
+  app.use((req, res, next) => {
+    const host = (req.headers.host || '').toLowerCase();
+    if (req.method === 'GET' && host && host !== CANONICAL_HOST && req.path !== '/mcp' && !req.path.startsWith('/api')) {
+      return res.redirect(301, `https://${CANONICAL_HOST}${req.originalUrl}`);
+    }
+    next();
+  });
+}
+
 // Limite simples por IP: o endpoint e publico e cada chamada bate na RPC.
 const hits = new Map();
 function rateLimit(max, windowMs) {
