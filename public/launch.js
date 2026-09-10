@@ -224,7 +224,8 @@
         html += `<div class="notice">No browser wallet found. Open this link in a browser with MetaMask, Rabby, Phantom (EVM) or another injected wallet, or in your wallet's built-in browser on mobile.</div>`;
       } else {
         html += `<div class="sub" style="margin-bottom:10px">${isHandover ? `Connect the wallet that currently receives the creator fees (<span class="mono">${esc(rec.summary?.currentRecipient)}</span>). Any other wallet is refused.` : `Connect the wallet that will pay and sign. It becomes the deployer${isLaunch ? ' and, unless set otherwise, the fee recipient' : ''}.`}</div>
-          <div class="wallets">${wallets.map((w, i) => `<button class="ghost" data-w="${i}" ${busy ? 'disabled' : ''}>${w.info.icon ? `<img src="${esc(w.info.icon)}" alt="">` : ''}${esc(w.info.name)}</button>`).join('')}</div>`;
+          <div class="wallets">${wallets.map((w, i) => `<button class="ghost" data-w="${i}" ${busy ? 'disabled' : ''}>${w.info.icon ? `<img src="${esc(w.info.icon)}" alt="">` : ''}Connect with ${esc(w.info.name)}</button>`).join('')}</div>
+          <p class="sub" style="margin-top:10px">Needs a wallet that supports custom networks, such as MetaMask or Rabby. Phantom does not support Robinhood Chain.</p>`;
       }
     }
 
