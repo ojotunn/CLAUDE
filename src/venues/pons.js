@@ -294,7 +294,7 @@ export async function quoteLaunch({ input, devBuy, salt, from, terms, exact = fa
 export async function quoteBuy({ token, amount, from, exact = false }) {
   const info = await tokenInfo(token);
   if (!info) throw new QuoteError('this address is not a pons v2 launch on this network', 'NOT_VENUE_TOKEN');
-  if (!info.canBuy) throw new QuoteError(`${info.symbol} has left the bonding curve (${info.phase}); Claudeploy only buys on the curve`, 'GRADUATED');
+  if (!info.canBuy) throw new QuoteError(`${info.symbol} has left the bonding curve (${info.phase}); the connector only buys on the curve`, 'GRADUATED');
   const sim = await simulateBuy({ curve: info.curve, quoteInWei: amount, recipient: from, from });
   // Outros podem negociar antes de a transacao entrar: 3% de folga.
   const minTokensOut = exact ? (sim.tokensOut * 97n) / 100n : 0n;

@@ -1,4 +1,4 @@
-// Configuracao do Claudeploy: venue (pons ou Argus), rede, contratos e limites.
+// Configuracao do Claudeploy/Claudearc: venue (pons ou Argus), rede, contratos e limites.
 // Um processo serve UM venue, escolhido por VENUE=argus|pons (padrao: argus). Cada deploy tem
 // o seu DATA_DIR, porque os registros de um venue nao fazem sentido no outro.
 import path from 'node:path';
@@ -89,7 +89,7 @@ export const LIMITS = {
 export const PORT = Number(process.env.PORT || 8436);
 export const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, '');
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || 'data');
-export const APP_NAME = 'Claudeploy';
+export const APP_NAME = process.env.APP_NAME || (VENUE === 'argus' ? 'Claudearc' : 'Claudeploy');
 export const VERSION = '0.2.0';
 // Link do codigo-fonte no rodape. Vazio = o site nao expoe repositorio nenhum.
 export const REPO_URL = process.env.REPO_URL || null;
@@ -101,5 +101,5 @@ export const LINKS = {
 };
 // Token oficial da casa (lancado fora do fluxo): aparece no topo do site.
 export const OFFICIAL_TOKEN = /^0x[0-9a-fA-F]{40}$/.test(process.env.OFFICIAL_TOKEN || '')
-  ? { address: process.env.OFFICIAL_TOKEN, symbol: (process.env.OFFICIAL_SYMBOL || 'CLAUDEPLOY').replace(/^\$/, '').toUpperCase() }
+  ? { address: process.env.OFFICIAL_TOKEN, symbol: (process.env.OFFICIAL_SYMBOL || (VENUE === 'argus' ? 'CLAUDEARC' : 'CLAUDEPLOY')).replace(/^\$/, '').toUpperCase() }
   : null;

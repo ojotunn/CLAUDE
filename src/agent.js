@@ -13,7 +13,7 @@
 //    carteira dele; o dono manda o dinheiro do lancamento para essa carteira.
 import fs from 'node:fs';
 import path from 'node:path';
-import { CHAIN, PUBLIC_URL, DATA_DIR, VENUE } from './config.js';
+import { CHAIN, PUBLIC_URL, DATA_DIR, VENUE, APP_NAME } from './config.js';
 import { Store } from './store.js';
 import * as chain from './chain.js';
 import { seal, open, agentsEnabled, issueSession } from './crypto.js';
@@ -464,7 +464,7 @@ export function startLoop() {
 // ---------------------------------------------------------------------------
 // Sessao do dono (assinatura de mensagem na pagina) e configuracoes.
 export function loginMessage({ token, wallet, issuedAt }) {
-  return `Claudeploy: manage the agent of ${token} as ${wallet} at ${issuedAt}`;
+  return `${APP_NAME}: manage the agent of ${token} as ${wallet} at ${issuedAt}`;
 }
 
 export async function login({ token, wallet, issuedAt, signature }) {

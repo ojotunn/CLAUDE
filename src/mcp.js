@@ -249,8 +249,8 @@ export function createMcpServer() {
   }));
 
   server.registerTool('recent_launches', {
-    title: 'Recent launches through Claudeploy',
-    description: 'The latest tokens launched through Claudeploy that are live on-chain.',
+    title: `Recent launches through ${APP_NAME}`,
+    description: `The latest tokens launched through ${APP_NAME} that are live on-chain.`,
     inputSchema: { limit: z.number().int().optional().describe('How many (default 20, max 100)') },
   }, run(async ({ limit }) => ok({ site: PUBLIC_URL, venue: chain.NAME, launches: launches.recent(limit) })));
 

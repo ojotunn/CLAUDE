@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Claudeploy — Launch a token by talking to Claude. Then give it an agent that runs itself.</title>
+  <title>{{APP}} — Launch a token by talking to Claude. Then give it an agent that runs itself.</title>
   <meta name="description" content="Launch a token on {{VENUE_NAME}} by talking to Claude. Then give it an agent that runs itself: a wallet of its own that collects the creator fees, buys back, burns, airdrops and posts, with no one approving anything.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,11 +77,11 @@
         </div>
         <div class="card" id="connect">
           <h2 style="font-size:28px">Add it to Claude</h2>
-          <p class="muted">Paste this URL as a custom connector. Works with Claude's Free, Pro and Max plans. Claudeploy itself is free.</p>
+          <p class="muted">Paste this URL as a custom connector. Works with Claude's Free, Pro and Max plans. {{APP}} itself is free.</p>
           <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
           <ol class="steps">
             <li><div><b>Open Claude</b><p>On the web or in the desktop app, go to <b>Customize → Connectors</b>.</p></div></li>
-            <li><div><b>Add custom connector</b><p>Paste the URL above, name it Claudeploy, save.</p></div></li>
+            <li><div><b>Add custom connector</b><p>Paste the URL above, name it {{APP}}, save.</p></div></li>
             <li><div><b>Say what to launch</b><p>Claude previews the terms first. Nothing happens until you confirm and sign.</p></div></li>
           </ol>
         </div>
@@ -100,7 +100,7 @@
           <div class="stat"><div class="v">$45,000</div><div class="k">liquidity locks for good</div></div>
           {{/argus}}
           <div class="stat"><div class="v" data-fill="cap">5%</div><div class="k">dev buy cap, share of supply</div></div>
-          <div class="stat"><div class="v">0</div><div class="k">of your keys held by Claudeploy</div></div>
+          <div class="stat"><div class="v">0</div><div class="k">of your keys held by {{APP}}</div></div>
         </div>
       </div>
     </section>
@@ -121,7 +121,7 @@
       <div class="wrap grid c2">
         <div>
           <h2>Your keys stay yours.</h2>
-          <p class="muted">Claudeploy is a builder, not a custodian. It prepares a transaction, shows you what it will do, and hands it to your wallet. Signing and broadcasting happen on your side, every time.</p>
+          <p class="muted">{{APP}} is a builder, not a custodian. It prepares a transaction, shows you what it will do, and hands it to your wallet. Signing and broadcasting happen on your side, every time.</p>
         </div>
         <ul class="checks">
           <li><div><b>Non-custodial.</b> No seed phrase, no private key, no deposit. Only your address, and only after you connect.</div></li>
@@ -133,7 +133,7 @@
           {{#argus}}
           <li><div><b>One transaction.</b> Token, tax hook, Uniswap v4 pool and your dev buy are created together by the Argus portal. No window for a sniper between launch and first buy.</div></li>
           <li><div><b>Tax fixed forever.</b> Buy tax, sell tax and the split are written at launch and cannot be changed by anyone, including you.</div></li>
-          <li><div><b>Hook mined locally.</b> Argus needs a hook address with specific bits; Claudeploy mines it for your wallet in a fraction of a second and predicts the token address the same way the portal does.</div></li>
+          <li><div><b>Hook mined locally.</b> Argus needs a hook address with specific bits; {{APP}} mines it for your wallet in a fraction of a second and predicts the token address the same way the portal does.</div></li>
           {{/argus}}
           <li><div><b>Dev buy capped</b> at <span data-fill="cap">5%</span> of supply. Larger requests are reduced automatically and you are told.</div></li>
         </ul>
@@ -171,7 +171,7 @@
     <section class="section tight">
       <div class="wrap">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
-          <h2>Launched through Claudeploy</h2>
+          <h2>Launched through {{APP}}</h2>
           <a href="/tokens">All tokens →</a>
         </div>
         <div id="launchList"><div class="empty">Loading…</div></div>

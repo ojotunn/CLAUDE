@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tokens · Claudeploy</title>
-  <meta name="description" content="Every token launched through Claudeploy on {{VENUE_NAME}}, with live price, market cap and progress from the chain.">
+  <title>Tokens · {{APP}}</title>
+  <meta name="description" content="Every token launched through {{APP}} on {{VENUE_NAME}}, with live price, market cap and progress from the chain.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
   <main class="wrap">
     <section class="hero" style="padding-bottom:24px">
       <div class="kicker"><i></i> Tokens</div>
-      <h1 style="font-size:clamp(34px,5vw,54px)">Launched through Claudeploy.</h1>
+      <h1 style="font-size:clamp(34px,5vw,54px)">Launched through {{APP}}.</h1>
       <p class="lead">Live from {{VENUE_NAME}} on {{CHAIN_NAME}}. {{#pons}}Price, ETH raised and progress toward graduation{{/pons}}{{#argus}}Price in USD, market cap and progress toward the $45,000 bond{{/argus}}, refreshed every minute.</p>
     </section>
 
@@ -33,7 +33,7 @@
 
     <section class="section tight">
       <div id="list"><div class="empty">Loading…</div></div>
-      <p class="small muted" style="margin-top:14px">Data comes from the {{VENUE_NAME}} contracts on {{CHAIN_NAME}}. Claudeploy lists what was launched through it; it does not curate, endorse or rate tokens.</p>
+      <p class="small muted" style="margin-top:14px">Data comes from the {{VENUE_NAME}} contracts on {{CHAIN_NAME}}. {{APP}} lists what was launched through it; it does not curate, endorse or rate tokens.</p>
     </section>
   </main>
   <footer id="footer"></footer>
@@ -52,7 +52,7 @@
         const r = document.getElementById('sRaised'); if (r) r.textContent = fmt(totals.raised, 3);
         const ag = document.getElementById('sAgents'); if (ag) ag.textContent = tokens.filter((t) => t.agent?.status === 'active').length;
         document.getElementById('sGrad').textContent = totals.graduated;
-        if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Claudeploy to Claude and be the first.</div>'; return; }
+        if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add {{APP}} to Claude and be the first.</div>'; return; }
         const head = '{{#argus}}<th>Token</th><th>Price (USD)</th><th>Market cap</th><th>Tax</th><th>Bond</th><th>Creator</th><th>Launched</th>{{/argus}}{{#pons}}<th>Token</th><th>Price ({{UNIT}})</th><th>Market cap ({{UNIT}})</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th>{{/pons}}';
         list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr>' + head + '</tr></thead><tbody>' +
           tokens.map((t) => {

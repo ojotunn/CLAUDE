@@ -7,7 +7,7 @@
 
   const nav = document.getElementById('nav');
   if (nav) nav.innerHTML = `<div class="wrap navrow">
-    <a class="brand" href="/">${MARK}<span>Claudeploy</span></a>
+    <a class="brand" href="/">${MARK}<span>{{APP}}</span></a>
     <nav>${LINKS.map(([h, t]) => `<a href="${h}" class="${path === h ? 'active' : ''}">${t}</a>`).join('')}</nav>
     <div class="navright"><span id="navExtra"></span><a class="btn sm" href="/docs#connect">Add to Claude</a></div>
   </div>`;
@@ -15,7 +15,7 @@
   const footer = document.getElementById('footer');
   if (footer) footer.innerHTML = `<div class="wrap">
     <div class="cols">
-      <div><a class="brand" href="/">${MARK}<span>Claudeploy</span></a><div class="small muted" style="margin-top:8px">Launch a token by talking to Claude. Then give it an agent that runs itself.</div></div>
+      <div><a class="brand" href="/">${MARK}<span>{{APP}}</span></a><div class="small muted" style="margin-top:8px">Launch a token by talking to Claude. Then give it an agent that runs itself.</div></div>
       <div class="links">
         ${LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}
         <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
@@ -23,7 +23,7 @@
         <span id="footSocial"></span>
       </div>
     </div>
-    <div class="fine" id="footFine">Claudeploy is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; Claudeploy is not affiliated with Anthropic.</div>
+    <div class="fine" id="footFine">{{APP}} is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; {{APP}} is not affiliated with Anthropic.</div>
   </div>`;
 
   // Dados vivos: elementos com data-fill="chave" recebem o valor de /api/terms.
@@ -87,7 +87,7 @@
         ].filter(Boolean).join(' ');
     }
     const fine = document.getElementById('footFine');
-    if (fine && t.venue) fine.textContent += ` Claudeploy is not affiliated with ${t.venue.name}.`;
+    if (fine && t.venue) fine.textContent += ` {{APP}} is not affiliated with ${t.venue.name}.`;
     return t;
   }).catch(() => null);
 

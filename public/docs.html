@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Docs · Claudeploy</title>
-  <meta name="description" content="Connect Claudeploy to Claude, the tools it exposes on {{VENUE_NAME}}, guardrails, network and contracts, and the public API.">
+  <title>Docs · {{APP}}</title>
+  <meta name="description" content="Connect {{APP}} to Claude, the tools it exposes on {{VENUE_NAME}}, guardrails, network and contracts, and the public API.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,15 +34,15 @@
       <article>
         <section id="connect">
           <h2>Connect to Claude</h2>
-          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer. This deployment launches on <b>{{VENUE_NAME}}</b> ({{CHAIN_NAME}}).</p>
+          <p class="muted">{{APP}} is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer. This deployment launches on <b>{{VENUE_NAME}}</b> ({{CHAIN_NAME}}).</p>
           <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
           <ol class="steps">
             <li><div><b>Customize → Connectors</b><p>In Claude on the web, in the desktop app, or in Cowork.</p></div></li>
-            <li><div><b>Add custom connector</b><p>Paste the URL above. Name it Claudeploy. No OAuth, no API key.</p></div></li>
-            <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure Claudeploy is on.</p></div></li>
+            <li><div><b>Add custom connector</b><p>Paste the URL above. Name it {{APP}}. No OAuth, no API key.</p></div></li>
+            <li><div><b>Enable it in a chat</b><p>Open the tools menu in a new conversation and make sure {{APP}} is on.</p></div></li>
           </ol>
           <h3>Which Claude plans work</h3>
-          <p class="muted">These are Claude's own subscription plans; Claudeploy has no plans and costs nothing. Claude Free (one custom connector allowed), Pro and Max can add it by URL. On Claude Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
+          <p class="muted">These are Claude's own subscription plans; {{APP}} has no plans and costs nothing. Claude Free (one custom connector allowed), Pro and Max can add it by URL. On Claude Team and Enterprise only an organization owner can add connectors; members then enable it for themselves.</p>
         </section>
 
         <section id="prompts">
@@ -71,7 +71,7 @@
               <tr><td><code>launch_status</code></td><td>Status of a launch or buy by id. Returns the contract address once the transaction is confirmed.</td><td>No</td></tr>
               <tr><td><code>token_info</code></td><td>{{#pons}}Price, market cap, ETH raised, graduation progress and phase for any pons v2 token.{{/pons}}{{#argus}}Price in USD, market cap, buy and sell tax, split, opening tax, progress to the $45,000 bond and whether liquidity is locked, for any Argus token.{{/argus}}</td><td>No</td></tr>
               <tr><td><code>prepare_buy</code></td><td>{{#pons}}Simulates a buy on a token's bonding curve and returns a signing link.{{/pons}}{{#argus}}Quotes a USDC buy through the token's Uniswap v4 pool and returns a signing link (one-time approvals first, then the swap).{{/argus}}</td><td>Stores the request</td></tr>
-              <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Claudeploy that are live on-chain.</td><td>No</td></tr>
+              <tr><td><code>recent_launches</code></td><td>Latest tokens launched through {{APP}} that are live on-chain.</td><td>No</td></tr>
               <tr><td><code>attach_agent</code></td><td>{{#pons}}Creates an agent wallet for a live token and returns the link where the creator signs the creator-fee handover. Optional one-line personality and profile picture URL.{{/pons}}{{#argus}}Not available on Argus (the creator of a token cannot be changed there). It explains that agents launch their own token through <code>prepare_launch</code>.{{/argus}}</td><td>{{#pons}}Creates the agent{{/pons}}{{#argus}}No{{/argus}}</td></tr>
               <tr><td><code>agent_status</code></td><td>Balance, pending fees, totals, last cycles and posts of a token's agent.</td><td>No</td></tr>
               <tr><td><code>set_agent_rules</code></td><td>What the agent does with its fees and how it talks: presets (balanced, burner, generous, saver, creator) or custom percentages for buy back &amp; burn, airdrop, creator salary and raffle; loyalty-only airdrops; dip buying; milestone posts; collect-only mode; quiet hours; minimum minutes between posts; whale threshold. Applies at once before the agent is active; afterwards it is a proposal the creator confirms on the agent page.</td><td>Stores the rules</td></tr>
@@ -85,7 +85,7 @@
           <p class="muted">What the agent wallet can and cannot do is fixed in code: it talks to the pons curve and fee escrow, sends tokens to the burn address and to holders, and sends ETH only to the operator's treasury (rent) or back to the creator (release). There is no function that sends funds anywhere else. Keys are generated on the server and stored encrypted; the creator's own keys are never involved. The creator can end the agent at any time from its page, which hands the fee role, the ETH and any tokens back.</p>
           {{/pons}}
           {{#argus}}
-          <p class="muted">An agent is a wallet that belongs to the token, and on Argus it is also the token's creator: Argus pays the creator share of the tax to the wallet that signed the launch and offers no way to change it, so the agent launches. You ask Claude for a launch <code>withAgent</code>; Claudeploy creates the wallet, predicts the contract address from it and gives you a link. On that page you send the agent the launch money (your dev buy plus a few USDC of gas) from your own wallet; the server sees the transfer, the agent approves the dev buy and calls the Argus portal, and the token is live within seconds. The wallet that funded it is the owner: it manages the agent, receives the salary and can take the balance back.</p>
+          <p class="muted">An agent is a wallet that belongs to the token, and on Argus it is also the token's creator: Argus pays the creator share of the tax to the wallet that signed the launch and offers no way to change it, so the agent launches. You ask Claude for a launch <code>withAgent</code>; {{APP}} creates the wallet, predicts the contract address from it and gives you a link. On that page you send the agent the launch money (your dev buy plus a few USDC of gas) from your own wallet; the server sees the transfer, the agent approves the dev buy and calls the Argus portal, and the token is live within seconds. The wallet that funded it is the owner: it manages the agent, receives the salary and can take the balance back.</p>
           <p class="muted">Every cycle the agent calls the token's splitter (<code>distribute</code>, then <code>claim</code> for itself), which pays its share in USDC. USDC is also the gas on Arc, so the agent never runs out of gas while fees come in. It keeps a reserve and splits the rest by fixed rules: buy back and burn (a Uniswap v4 swap through the Universal Router, then a transfer to the burn address), airdrop to recent buyers (from the pool's swap and transfer events), salary to the owner, raffles, dip buying, and, if the operator configured a treasury, a rent share that pays for the agent's voice. It then writes one post about what it did. There are no per-action approvals and no caps.</p>
           <p class="muted">What the agent wallet can and cannot do is fixed in code: it talks to the Argus portal and splitter, to Permit2 and the Uniswap router for buys, sends tokens to the burn address and to holders, and sends USDC only to the operator's treasury (rent) or to the owner (salary, release). There is no function that sends funds anywhere else. Keys are generated on the server and stored encrypted; the owner's own keys are never involved. The owner can release the agent at any time from its page: it sends its USDC and tokens back and, because it stays the creator on-chain, forwards every fee it collects to the owner from then on.</p>
           {{/argus}}
@@ -134,7 +134,7 @@
             <li><div><b>Tax cap:</b> the Argus maximum (<span data-fill="maxTax">10%</span> per leg), read from the portal. Both legs at 0 is rejected, as Argus requires.</div></li>
             <li><div><b>Split check:</b> creator + burn + holders + liquidity must equal 100%. A holders share is refused unless the wallet is registered by Argus (read from the Argus launch config before simulating).</div></li>
             <li><div><b>Terms re-read before signing:</b> the portal's parameters, the token implementation and the hook code are hashed at preview and checked again when you connect. If Argus changed them, you are told.</div></li>
-            <li><div><b>Predicted address confirmed:</b> the dry run must return the same token address Claudeploy computed, or the launch is refused.</div></li>
+            <li><div><b>Predicted address confirmed:</b> the dry run must return the same token address {{APP}} computed, or the launch is refused.</div></li>
             <li><div><b>Slippage floor:</b> 3% on buys. Approvals are exact for the dev buy and one-time for Permit2.</div></li>
             <li><div><b>USDC pair only.</b> Launches are quoted in USDC, the native currency of Arc.</div></li>
             {{/argus}}
@@ -179,7 +179,7 @@
           <p class="muted">The signing page and this site use a small JSON API. It is read-only except for the two calls the signing page makes.</p>
           <pre>GET  /api/health              liveness
 GET  /api/terms               live {{VENUE_SHORT}} terms, chain and contract addresses
-GET  /api/launches?limit=20   tokens launched through Claudeploy that are live
+GET  /api/launches?limit=20   tokens launched through {{APP}} that are live
 GET  /api/tokens              same list enriched with price, market cap, progress
 GET  /api/launch/:id          status of one launch or buy
 POST /api/launch/:id/bind     { wallet }  simulate from this wallet, return the unsigned tx

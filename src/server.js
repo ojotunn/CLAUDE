@@ -191,6 +191,7 @@ app.use('/api', api);
 // Site. As paginas HTML sao templates: {{#pons}}...{{/pons}} e
 // {{#argus}}...{{/argus}} ficam ou somem conforme o venue; {{CHAVE}} vira texto.
 const VARS = {
+  APP: APP_NAME, APP_LOWER: APP_NAME.toLowerCase(),
   VENUE: VENUE, VENUE_NAME: chain.NAME, VENUE_SHORT: chain.SHORT, CHAIN_NAME: CHAIN.name, CHAIN_ID: String(CHAIN.id),
   UNIT: QUOTE.symbol, MARKET: chain.MARKET, VENUE_DOCS: chain.DOCS_URL, TOKEN_SITE: TOKEN_URL.replace('/{token}', '').replace('{token}', ''),
   EXAMPLE_DEV_BUY: VENUE === 'argus' ? '20 USDC' : '0.05 ETH', EXAMPLE_BUY: VENUE === 'argus' ? '10 USDC' : '0.01 ETH',
@@ -217,6 +218,8 @@ const sendPage = (file) => (_req, res) => { res.setHeader('Cache-Control', 'no-c
 for (const [route, file] of Object.entries(PAGES)) { app.get(route, sendPage(file)); app.get(`${route === '/' ? '/index' : route}.html`, sendPage(file)); }
 app.get('/l/:id', sendPage('launch.html'));
 app.get('/t/:token', sendPage('agent.html'));
+// site.js tambem e template (nome do produto no cabecalho e rodape)
+app.get('/site.js', (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.type('application/javascript').send(renderPage('site.js')); });
 app.use('/avatars', express.static(path.join(DATA_DIR, 'avatars'), { maxAge: '1h', index: false }));
 // JS e CSS sempre revalidam (o navegador pergunta e recebe 304 se nada
 // mudou); so imagens da marca ficam em cache longo.

@@ -1,4 +1,9 @@
-# Claudeploy
+# Claudearc (ex-Claudeploy)
+
+No ar em **https://claudearc.com** (Argus na Arc). O nome do produto vem de
+`APP_NAME` ou do venue: Claudearc na Argus, Claudeploy na pons. O símbolo da era
+Arc é o "olho de Argus com o robô de pupila" (`brand/candidates-arc/A.png`,
+peças em `public/brand/`, capa do X em `brand/x-cover-3000x1000.png`).
 
 Lança token conversando com o Claude, em dois venues: **pons v2** (Robinhood
 Chain) e **Argus** (Arc, a chain da Circle). É o equivalente do Brdy (ChatGPT)
