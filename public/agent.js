@@ -7,6 +7,8 @@
   const esc = window.siteEsc;
   const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
   const fmt = (n, d = 4) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: d });
+  const U = () => (a && a.unit) || 'ETH';
+  const amt = (x) => esc(x.amount ?? x.eth);
   let a = null, session = null, account = null, provider = null, busy = false, msg = null, manageOpen = false;
   try { session = localStorage.getItem(`cd-session-${token.toLowerCase()}`); } catch {}
 
@@ -56,27 +58,28 @@
   }
 
   const statusChip = () => {
-    const map = { pending_handover: ['warn', 'waiting for the fee handover'], active: ['ok', 'active'], released: ['', 'released'] };
+    const map = { pending_handover: ['warn', 'waiting for the fee handover'], pending_funding: ['warn', 'waiting for the launch money'], active: ['ok', 'active'], released: [a.forwarding ? 'ok' : '', a.forwarding ? 'released · forwarding fees to the owner' : 'released'] };
     const [cls, label] = map[a.status] || ['', a.status];
     return `<span class="status ${cls}"><i></i>${esc(label)}</span>`;
   };
 
   const actLine = (x) => {
-    if (x.kind === 'collect') return `collected ${esc(x.eth)} ETH`;
-    if (x.kind === 'rent') return `rent ${esc(x.eth)} ETH`;
-    if (x.kind === 'salary') return `creator salary ${esc(x.eth)} ETH`;
-    if (x.kind === 'buyback') return `bought ${fmt(x.tokens, 0)} $${esc(a.symbol)} (${esc(x.eth)} ETH)`;
-    if (x.kind === 'dipbuy') return `bought the ${x.dropPct}% dip: ${fmt(x.tokens, 0)} $${esc(a.symbol)} (${esc(x.eth)} ETH)`;
+    if (x.kind === 'collect') return `collected ${amt(x)} ${U()}`;
+    if (x.kind === 'forward') return `forwarded ${amt(x)} ${U()} to the owner`;
+    if (x.kind === 'rent') return `rent ${amt(x)} ${U()}`;
+    if (x.kind === 'salary') return `creator salary ${amt(x)} ${U()}`;
+    if (x.kind === 'buyback') return `bought ${fmt(x.tokens, 0)} $${esc(a.symbol)} (${amt(x)} ${U()})`;
+    if (x.kind === 'dipbuy') return `bought the ${x.dropPct}% dip: ${fmt(x.tokens, 0)} $${esc(a.symbol)} (${amt(x)} ${U()})`;
     if (x.kind === 'burn') return `burned ${fmt(x.tokens, 0)}`;
     if (x.kind === 'airdrop') return `airdropped ${fmt(x.tokens, 0)} to ${x.recipients} ${x.loyal ? 'loyal holders' : 'buyers'}`;
     if (x.kind === 'raffle') return `raffle: ${fmt(x.tokens, 0)} to ${short(x.winner)} (${x.entrants} entrants, block ${x.block})`;
-    if (x.kind === 'hold') return `held ${esc(x.eth)} ETH (${esc(x.reason)})`;
+    if (x.kind === 'hold') return `held ${amt(x)} ${U()} (${esc(x.reason)})`;
     return esc(x.kind);
   };
   const eventLine = (e) => {
-    if (e.kind === 'whale') return `big buy: ${esc(e.eth)} ETH by ${short(e.who)}`;
-    if (e.kind === 'milestone') return `${e.pct}% of the way to graduation`;
-    if (e.kind === 'graduated') return 'graduated to Uniswap v4';
+    if (e.kind === 'whale') return `big buy: ${amt(e)} ${U()} by ${short(e.who)}`;
+    if (e.kind === 'milestone') return `${e.pct}% of the way to ${esc((e.label || 'graduation').split(' (')[0])}`;
+    if (e.kind === 'graduated') return a.venue === 'Argus' ? 'hit the bond: liquidity locked for good' : 'graduated to Uniswap v4';
     return esc(e.kind);
   };
   const b = (v) => (v ? 'checked' : '');
@@ -92,7 +95,7 @@
       <div class="avatar">${a.avatar ? `<img src="${esc(a.avatar)}" alt="">` : initials}</div>
       <div style="flex:1;min-width:220px">
         <div class="big">${esc(a.name)} <span class="muted" style="font-size:18px">$${esc(a.symbol)}</span> <span class="chip">agent</span></div>
-        <div class="sub">wallet <a class="mono" href="${esc(a.links.agentWallet)}" target="_blank" rel="noopener">${short(a.agent)}</a> · <a href="${esc(a.links.pons)}" target="_blank" rel="noopener">token on pons</a></div>
+        <div class="sub">wallet <a class="mono" href="${esc(a.links.agentWallet)}" target="_blank" rel="noopener">${short(a.agent)}</a>${a.token ? ` · <a href="${esc(a.links.venue || a.links.pons)}" target="_blank" rel="noopener">token on ${esc(a.venue || 'pons')}</a>` : ''}${a.permanentRole ? ' · <span class="chip">creator on-chain</span>' : ''}</div>
         ${a.vibe ? `<div class="sub" style="margin-top:4px">“${esc(a.vibe)}”</div>` : ''}
       </div>
       ${statusChip()}
@@ -102,23 +105,26 @@
       h += `<div class="notice warn">This agent is waiting for the creator to hand over the creator fees. Creator wallet: <span class="mono">${esc(a.creator)}</span>.
         ${a.handoverUrl ? `<div style="margin-top:8px"><a class="btn sm accent" href="${esc(a.handoverUrl)}">Open the handover link</a></div>` : ''}</div>`;
     }
-    if (a.status === 'released') h += `<div class="notice">Released. Fees and balance went back to the creator.</div>`;
+    if (a.status === 'pending_funding') {
+      h += `<div class="notice warn">This agent is waiting for the launch money. Once the owner funds its wallet on the signing page, it launches the token itself and becomes the creator.${a.fundingUrl ? `<div style="margin-top:8px"><a class="btn sm accent" href="${esc(a.fundingUrl)}">Open the funding link</a></div>` : ''}</div>`;
+    }
+    if (a.status === 'released') h += `<div class="notice">${a.forwarding ? 'Released. Balance and tokens went back to the owner. The agent stays the creator on-chain and forwards every fee it collects to the owner.' : 'Released. Fees and balance went back to the creator.'}</div>`;
     if (a.needsGas) {
-      h += `<div class="notice warn"><b>Needs gas to start.</b> The agent wallet holds ${esc(a.balanceEth)} ETH and its first move (collecting fees) costs gas. Send it about ${esc(a.kickstartEth)} ETH once; it pays for itself from then on.
-        <div class="actions" style="margin-top:8px"><button class="sm accent" id="kick" ${busy ? 'disabled' : ''}>Send ${esc(a.kickstartEth)} ETH for gas</button><button class="sm ghost" data-copy="${esc(a.agent)}">Copy agent address</button></div></div>`;
+      h += `<div class="notice warn"><b>Needs gas to start.</b> The agent wallet holds ${esc(a.balanceEth)} ${U()} and its first move (collecting fees) costs gas. Send it about ${esc(a.kickstartEth)} ${U()} once; it pays for itself from then on.
+        <div class="actions" style="margin-top:8px"><button class="sm accent" id="kick" ${busy ? 'disabled' : ''}>Send ${esc(a.kickstartEth)} ${U()} for gas</button><button class="sm ghost" data-copy="${esc(a.agent)}">Copy agent address</button></div></div>`;
     }
 
     h += `<div class="stats" style="margin:18px 0">
-      <div class="stat"><div class="v">${fmt(a.balanceEth)}</div><div class="k">ETH in the agent wallet</div></div>
-      <div class="stat"><div class="v">${fmt(a.pendingEth)}</div><div class="k">ETH in fees not collected yet</div></div>
-      <div class="stat"><div class="v">${fmt(a.stats.collectedEth)}</div><div class="k">ETH collected so far</div></div>
+      <div class="stat"><div class="v">${fmt(a.balanceEth)}</div><div class="k">${U()} in the agent wallet</div></div>
+      <div class="stat"><div class="v">${fmt(a.pendingEth)}</div><div class="k">${U()} in fees not collected yet${a.venue === 'Argus' ? ' (about)' : ''}</div></div>
+      <div class="stat"><div class="v">${fmt(a.stats.collectedEth)}</div><div class="k">${U()} collected so far</div></div>
       <div class="stat"><div class="v">${fmt(a.stats.burnedTokens, 0)}</div><div class="k">$${esc(a.symbol)} burned</div></div>
       <div class="stat"><div class="v">${fmt(a.stats.airdroppedTokens, 0)}</div><div class="k">$${esc(a.symbol)} airdropped</div></div>
       ${Number(a.stats.raffleTokens) ? `<div class="stat"><div class="v">${fmt(a.stats.raffleTokens, 0)}</div><div class="k">$${esc(a.symbol)} raffled</div></div>` : ''}
-      ${Number(a.stats.salaryEth) ? `<div class="stat"><div class="v">${fmt(a.stats.salaryEth)}</div><div class="k">ETH paid to the creator</div></div>` : ''}
+      ${Number(a.stats.salaryEth) ? `<div class="stat"><div class="v">${fmt(a.stats.salaryEth)}</div><div class="k">${U()} paid to the creator</div></div>` : ''}${Number(a.stats.forwardedEth) ? `<div class="stat"><div class="v">${fmt(a.stats.forwardedEth)}</div><div class="k">${U()} forwarded to the owner</div></div>` : ''}
       <div class="stat"><div class="v">${a.stats.cycles}</div><div class="k">cycles run</div></div>
     </div>
-    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${esc(a.split)}.${a.rules.collectOnly ? ' <b>Collect-only mode: it spends nothing for now.</b>' : ''}${a.rules.dipBuyPct ? ` If the price drops ${a.rules.dipBuyPct}% between cycles, it spends the reserve buying and burning.` : ''} No approvals, no caps. The agent can only talk to pons, the burn address, holders and the creator.${a.pendingRules ? ` <b>A new split was proposed from Claude and waits for the creator to apply it.</b>` : ''}</p>`;
+    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${esc(a.split)}.${a.rules.collectOnly ? ' <b>Collect-only mode: it spends nothing for now.</b>' : ''}${a.rules.dipBuyPct ? ` If the price drops ${a.rules.dipBuyPct}% between cycles, it spends the reserve buying and burning.` : ''} No approvals, no caps. The agent can only talk to ${esc(a.venue || 'pons')}, the burn address, holders and the creator.${a.pendingRules ? ` <b>A new split was proposed from Claude and waits for the creator to apply it.</b>` : ''}</p>`;
 
     if (a.voice) {
       h += `<div class="card" style="margin:18px 0">
@@ -145,7 +151,7 @@
     h += `<div class="manage card">`;
     if (msg) h += `<div class="notice ${msg.ok ? 'ok' : 'bad'}">${esc(msg.text)}</div>`;
     if (!session) {
-      h += `<h3>Creator?</h3><p class="sub">Sign a message with the creator wallet <span class="mono">${short(a.creator)}</span> to manage this agent. No transaction, no gas.</p>
+      h += `<h3>Creator?</h3><p class="sub">Sign a message with the ${a.permanentRole ? 'owner' : 'creator'} wallet <span class="mono">${short(a.creator)}</span> to manage this agent. No transaction, no gas.</p>
         <button id="login" ${busy ? 'disabled' : ''}>${busy ? 'Waiting for wallet…' : 'Manage as creator'}</button>`;
     } else {
       h += `<h3>Manage</h3>
@@ -180,7 +186,7 @@
         </div>
         <label>Posting</label>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;align-items:end">
-          <div><span class="sub">post on buys ≥ ETH</span><input type="text" id="rWhale" value="${esc(a.rules.whaleEth || '0.05')}" inputmode="decimal"></div>
+          <div><span class="sub">post on buys ≥ ${U()}</span><input type="text" id="rWhale" value="${esc(a.rules.whaleEth || '0.05')}" inputmode="decimal"></div>
           <div><span class="sub">quiet hours, UTC (e.g. 22-8)</span><input type="text" id="rQuiet" value="${a.rules.quietHours ? `${a.rules.quietHours.from}-${a.rules.quietHours.to}` : ''}" placeholder="off"></div>
           <div><span class="sub">min minutes between posts</span><input type="text" id="rMinPost" value="${a.rules.minPostMin || 0}" inputmode="numeric"></div>
         </div>
@@ -206,7 +212,7 @@
         </div>
         <hr class="soft">
         <label>Take the fees back</label>
-        <p class="sub" style="margin:0 0 8px">The agent hands the creator-fee role, its ETH and any tokens back to <span class="mono">${short(a.creator)}</span>. This ends the agent.</p>
+        <p class="sub" style="margin:0 0 8px">${a.permanentRole ? `The agent sends its ${U()} and any tokens back to <span class="mono">${short(a.creator)}</span>. It stays the creator on-chain (that cannot change on ${esc(a.venue)}), so from then on it forwards every fee it collects to that wallet.` : `The agent hands the creator-fee role, its ${U()} and any tokens back to <span class="mono">${short(a.creator)}</span>. This ends the agent.`}</p>
         <button class="sm ghost" id="release" ${busy || a.status !== 'active' ? 'disabled' : ''} style="color:var(--bad)">Release agent</button>
         <button class="sm ghost" id="logout" style="float:right">Sign out</button>`;
     }
@@ -220,9 +226,10 @@
       const [acc] = await w.provider.request({ method: 'eth_requestAccounts' });
       const t = await fetch('/api/terms').then((r) => r.json());
       const hex = '0x' + Number(t.chain.id).toString(16);
+      const native = t.chain.native || { name: 'Ether', symbol: 'ETH' };
       try { await w.provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] }); } catch (e) {
         if (!(e?.code === 4902 || /unrecognized|not added|unknown chain/i.test(e?.message || ''))) throw e;
-        await w.provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: t.chain.name, nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: [t.chain.rpc], blockExplorerUrls: [t.chain.explorer] }] });
+        await w.provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId: hex, chainName: t.chain.name, nativeCurrency: { name: native.name, symbol: native.symbol, decimals: 18 }, rpcUrls: [t.chain.rpc], blockExplorerUrls: [t.chain.explorer] }] });
       }
       const wei = BigInt(Math.round(Number(a.kickstartEth) * 1e6)) * 1000000000000n;
       await w.provider.request({ method: 'eth_sendTransaction', params: [{ from: acc, to: a.agent, value: '0x' + wei.toString(16), chainId: hex }] });
@@ -232,7 +239,7 @@
     on('saveRules', () => act('Settings saved.', () => api(`/api/agent/${token}/rules`, { method: 'POST', json: {
       buybackPct: Number(document.getElementById('rBuy').value), airdropPct: Number(document.getElementById('rAir').value),
       salaryPct: Number(document.getElementById('rSal').value), rafflePct: Number(document.getElementById('rRaf').value),
-      dipBuyPct: Number(document.getElementById('rDip').value), whaleEth: document.getElementById('rWhale').value.trim() || '0.05',
+      dipBuyPct: Number(document.getElementById('rDip').value), whaleAmount: document.getElementById('rWhale').value.trim() || '0.05',
       quietHours: document.getElementById('rQuiet').value.trim(), minPostMin: Number(document.getElementById('rMinPost').value),
       loyaltyOnly: document.getElementById('rLoyal').checked, milestones: document.getElementById('rMile').checked, collectOnly: document.getElementById('rCollect').checked,
     } })));

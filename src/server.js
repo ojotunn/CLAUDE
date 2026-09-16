@@ -1,10 +1,12 @@
-// Servidor HTTP do Pronto: endpoint MCP (Claude), API da pagina de assinatura e
-// o site estatico. Uma porta so.
+// Servidor HTTP do Claudeploy: endpoint MCP (Claude), API da pagina de
+// assinatura e o site estatico. Uma porta so. As paginas HTML passam por um
+// template minimo, porque o mesmo site serve os dois venues (pons e Argus).
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL, OFFICIAL_TOKEN, PONS_TOKEN_URL } from './config.js';
+import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL, OFFICIAL_TOKEN, TOKEN_URL, VENUE, QUOTE, OTHER_VENUE_URL } from './config.js';
 import { createMcpServer } from './mcp.js';
 import * as chain from './chain.js';
 import * as launches from './launches.js';
@@ -85,31 +87,35 @@ const api = express.Router();
 api.use(rateLimit(240, 60_000));
 const writeLimit = rateLimit(20, 60_000);
 
-api.get('/health', (_req, res) => res.json({ ok: true, app: APP_NAME, version: VERSION, network: CHAIN.network }));
+api.get('/health', (_req, res) => res.json({ ok: true, app: APP_NAME, version: VERSION, venue: VENUE, network: CHAIN.network }));
 
 api.get('/terms', async (_req, res) => {
   const t = await chain.protocolTerms();
+  const s = chain.termsSummary(t);
   res.json({
+    ...s,
     app: APP_NAME,
-    chain: { id: CHAIN.id, name: CHAIN.name, rpc: CHAIN.rpc, explorer: CHAIN.explorer, isTestnet: CHAIN.isTestnet },
+    venueName: s.venue,
+    venue: { id: VENUE, name: chain.NAME, short: chain.SHORT, market: chain.MARKET, docs: chain.DOCS_URL, tokenUrl: TOKEN_URL, supportsHandover: chain.supportsHandover, agentMustLaunch: chain.agentMustLaunch, otherVenueUrl: OTHER_VENUE_URL },
+    unit: QUOTE.symbol,
+    chain: { id: CHAIN.id, name: CHAIN.name, rpc: CHAIN.rpc, explorer: CHAIN.explorer, isTestnet: CHAIN.isTestnet, native: CHAIN.native },
     contracts: CONTRACTS,
-    launchFeeEth: t.launchFeeEth,
-    supply: t.supplyTokens,
-    maxCreatorTaxBps: t.maxCreatorTaxBps,
-    launchEnabled: t.launchEnabled,
-    graduatesAtEth: t.graduationThresholdEth,
+    launchFeeEth: s.launchFee,
+    maxCreatorTaxBps: s.maxCreatorTaxBps,
+    launchEnabled: s.launchesOpenToEveryone,
+    graduatesAtEth: s.graduatesAtValue,
     devBuyCapBps: LIMITS.maxDevBuyBps,
     mcpUrl: `${PUBLIC_URL}/mcp`,
     links: LINKS,
     repo: REPO_URL,
-    officialToken: OFFICIAL_TOKEN ? { ...OFFICIAL_TOKEN, pons: PONS_TOKEN_URL.replace('{token}', OFFICIAL_TOKEN.address), explorer: `${CHAIN.explorer}/token/${OFFICIAL_TOKEN.address}` } : null,
+    officialToken: OFFICIAL_TOKEN ? { ...OFFICIAL_TOKEN, pons: TOKEN_URL.replace('{token}', OFFICIAL_TOKEN.address), venue: TOKEN_URL.replace('{token}', OFFICIAL_TOKEN.address), explorer: `${CHAIN.explorer}/token/${OFFICIAL_TOKEN.address}` } : null,
   });
 });
 
 api.get('/launches', (req, res) => res.json({ launches: launches.recent(req.query.limit) }));
 
 // ---------------------------------------------------------------------------
-// Agentes. Leitura e publica; escrita exige a sessao do criador (assinatura).
+// Agentes. Leitura e publica; escrita exige a sessao do dono (assinatura).
 const tokenParam = (req) => {
   const t = req.params.token || '';
   if (!/^0x[0-9a-fA-F]{40}$/.test(t)) throw new launches.UserError('invalid token address', 'INVALID_INPUT');
@@ -120,7 +126,7 @@ const creatorOnly = (req, res, next) => {
   const t = (req.params.token || '').toLowerCase();
   if (!s || s.token !== t) return res.status(401).json({ error: 'sign in with the creator wallet first', code: 'UNAUTHORIZED' });
   const rec = agent.get(t);
-  if (!rec || rec.creator.toLowerCase() !== s.wallet) return res.status(403).json({ error: 'only the creator wallet can do this', code: 'FORBIDDEN' });
+  if (!rec || !rec.creator || rec.creator.toLowerCase() !== s.wallet) return res.status(403).json({ error: 'only the creator wallet can do this', code: 'FORBIDDEN' });
   req.agent = rec;
   next();
 };
@@ -152,7 +158,7 @@ api.post('/agent/:token/avatar', creatorOnly, express.raw({ type: 'image/*', lim
 });
 api.post('/agent/:token/release', creatorOnly, writeLimit, async (req, res) => res.json(await agent.release(req.params.token)));
 
-// Pagina de tokens: a lista dos lancamentos com o estado vivo da curva. Cache
+// Pagina de tokens: a lista dos lancamentos com o estado vivo do mercado. Cache
 // de 60s por token para nao bater na RPC a cada visita.
 const infoCache = new Map();
 async function cachedInfo(token) {
@@ -168,12 +174,12 @@ api.get('/tokens', async (req, res) => {
   const tokens = await Promise.all(list.map(async (l) => ({ ...l, info: await cachedInfo(l.token), agent: ag[l.token.toLowerCase()] || null })));
   const totals = tokens.reduce((acc, t) => {
     if (!t.info) return acc;
-    acc.marketCapEth += t.info.marketCapEth || 0;
-    acc.raisedEth += Number(t.info.raisedEth || 0);
+    acc.marketCap += t.info.marketCap || 0;
+    acc.raised += Number(t.info.raised || 0);
     if (t.info.graduated) acc.graduated++;
     return acc;
-  }, { count: tokens.length, marketCapEth: 0, raisedEth: 0, graduated: 0 });
-  res.json({ tokens, totals });
+  }, { count: tokens.length, marketCap: 0, raised: 0, graduated: 0 });
+  res.json({ tokens, totals: { ...totals, marketCapEth: totals.marketCap, raisedEth: totals.raised }, unit: QUOTE.symbol, venue: VENUE });
 });
 api.get('/launch/:id', (req, res) => res.json(launches.status(req.params.id)));
 api.post('/launch/:id/bind', writeLimit, async (req, res) => res.json(await launches.bind(req.params.id, req.body?.wallet)));
@@ -182,14 +188,41 @@ api.post('/launch/:id/tx', writeLimit, async (req, res) => res.json(await launch
 app.use('/api', api);
 
 // ---------------------------------------------------------------------------
-// Site.
-app.get('/l/:id', (_req, res) => res.sendFile(path.join(publicDir, 'launch.html')));
-app.get('/t/:token', (_req, res) => res.sendFile(path.join(publicDir, 'agent.html')));
+// Site. As paginas HTML sao templates: {{#pons}}...{{/pons}} e
+// {{#argus}}...{{/argus}} ficam ou somem conforme o venue; {{CHAVE}} vira texto.
+const VARS = {
+  VENUE: VENUE, VENUE_NAME: chain.NAME, VENUE_SHORT: chain.SHORT, CHAIN_NAME: CHAIN.name, CHAIN_ID: String(CHAIN.id),
+  UNIT: QUOTE.symbol, MARKET: chain.MARKET, VENUE_DOCS: chain.DOCS_URL, TOKEN_SITE: TOKEN_URL.replace('/{token}', '').replace('{token}', ''),
+  EXAMPLE_DEV_BUY: VENUE === 'argus' ? '20 USDC' : '0.05 ETH', EXAMPLE_BUY: VENUE === 'argus' ? '10 USDC' : '0.01 ETH',
+  OTHER_VENUE_URL: OTHER_VENUE_URL || '', OTHER_VENUE_NAME: VENUE === 'argus' ? 'pons (Robinhood Chain)' : 'Argus (Arc)',
+};
+// Marca da Uniswap (svg oficial do repositorio brand-assets, sem cores) para a faixa "built on".
+try { VARS.UNISWAP_ICON = fs.readFileSync(path.join(publicDir, 'brand', 'uniswap-mark.svg'), 'utf8'); } catch { VARS.UNISWAP_ICON = ''; }
+const pageCache = new Map();
+function renderPage(file) {
+  const abs = path.join(publicDir, file);
+  const stat = fs.statSync(abs);
+  const hit = pageCache.get(file);
+  if (hit && hit.mtime === stat.mtimeMs) return hit.html;
+  let html = fs.readFileSync(abs, 'utf8');
+  for (const v of ['pons', 'argus']) {
+    const re = new RegExp(`\\{\\{#${v}\\}\\}([\\s\\S]*?)\\{\\{/${v}\\}\\}`, 'g');
+    html = html.replace(re, (_, body) => (v === VENUE ? body : ''));
+  }
+  html = html.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => (k in VARS ? VARS[k] : m));
+  pageCache.set(file, { mtime: stat.mtimeMs, html });
+  return html;
+}
+const PAGES = { '/': 'index.html', '/how': 'how.html', '/tokens': 'tokens.html', '/docs': 'docs.html', '/support': 'support.html', '/privacy': 'privacy.html', '/terms': 'terms.html' };
+const sendPage = (file) => (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.type('html').send(renderPage(file)); };
+for (const [route, file] of Object.entries(PAGES)) { app.get(route, sendPage(file)); app.get(`${route === '/' ? '/index' : route}.html`, sendPage(file)); }
+app.get('/l/:id', sendPage('launch.html'));
+app.get('/t/:token', sendPage('agent.html'));
 app.use('/avatars', express.static(path.join(DATA_DIR, 'avatars'), { maxAge: '1h', index: false }));
-// HTML, JS e CSS sempre revalidam (o navegador pergunta e recebe 304 se nada
+// JS e CSS sempre revalidam (o navegador pergunta e recebe 304 se nada
 // mudou); so imagens da marca ficam em cache longo.
 app.use(express.static(publicDir, {
-  extensions: ['html'],
+  index: false,
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', /\.(png|jpg|gif|webp|svg|ico)$/i.test(filePath) ? 'public, max-age=86400' : 'no-cache');
   },
@@ -215,7 +248,7 @@ setInterval(() => { try { launches.prune(); } catch (e) { console.error('[prune]
 setInterval(() => { try { launches.resumeWatchers(); } catch (e) { console.error('[watch]', e); } }, 300_000).unref();
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`${APP_NAME} ${VERSION} on ${PUBLIC_URL} (${CHAIN.name}, chain ${CHAIN.id})`);
+  console.log(`${APP_NAME} ${VERSION} on ${PUBLIC_URL} (${chain.NAME} on ${CHAIN.name}, chain ${CHAIN.id})`);
   console.log(`  MCP endpoint : ${PUBLIC_URL}/mcp`);
   console.log(`  data dir     : ${DATA_DIR}`);
   if (!agentsEnabled()) console.log('  agents       : disabled (set AGENT_SECRET to enable)');

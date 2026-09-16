@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How it works · Claudeploy</title>
-  <meta name="description" content="From a sentence in Claude to a live token on pons, and then to an agent that runs it: add the connector, describe the token, check the preview, sign once, hand the fees to the agent.">
+  <meta name="description" content="From a sentence in Claude to a live token on {{VENUE_NAME}}, and then to an agent that runs it: add the connector, describe the token, check the preview, sign, give it an agent.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,13 +18,13 @@
     <section class="hero" style="padding-bottom:20px">
       <div class="kicker"><i></i> How it works</div>
       <h1 style="font-size:clamp(34px,5vw,54px)">From a sentence to a live token.</h1>
-      <p class="lead">Five steps to a live token, one more to give it an agent. Most of them are Claude's job. Two are signatures.</p>
+      <p class="lead">Five steps to a live token on {{VENUE_NAME}}, one more to give it an agent. Most of them are Claude's job. The rest are signatures.</p>
     </section>
 
     <section class="section tight">
       <div class="card">
         <h3>1. Add the connector</h3>
-        <p class="muted">In Claude, open <b>Customize → Connectors → Add custom connector</b> and paste the Claudeploy URL. From then on Claude knows seven tools: read the pons terms, preview a launch, prepare it, check its status, look up a token, prepare a buy, list recent launches.</p>
+        <p class="muted">In Claude, open <b>Customize → Connectors → Add custom connector</b> and paste the Claudeploy URL. From then on Claude knows the tools: read the {{VENUE_SHORT}} terms, preview a launch, prepare it, check its status, look up a token, prepare a buy, list recent launches, and everything about agents.</p>
         <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
       </div>
     </section>
@@ -32,9 +32,10 @@
     <section class="section tight">
       <div class="card">
         <h3>2. Describe the token</h3>
-        <p class="muted">Plain language. Claude extracts the name, the ticker, the description, links, an optional creator tax and an optional dev buy. Anything missing, it asks.</p>
+        <p class="muted">Plain language. Claude extracts the name, the ticker, the description, links, {{#pons}}an optional creator tax and an optional dev buy{{/pons}}{{#argus}}the tax (buy and sell, 0 to 10% each), how the tax is split between you, the burn and the pool, and an optional dev buy in USDC{{/argus}}. Anything missing, it asks.</p>
         <div class="chat">
-          <div class="msg user"><div class="who">You</div><div class="body">Launch <b>Night Owl</b> (OWL), "for people who ship at 3am", website nightowl.xyz, 0.05 ETH dev buy, 1% creator tax.</div></div>
+          {{#pons}}<div class="msg user"><div class="who">You</div><div class="body">Launch <b>Night Owl</b> (OWL), "for people who ship at 3am", website nightowl.xyz, 0.05 ETH dev buy, 1% creator tax.</div></div>{{/pons}}
+          {{#argus}}<div class="msg user"><div class="who">You</div><div class="body">Launch <b>Night Owl</b> (OWL), "for people who ship at 3am", website nightowl.xyz, 20 USDC dev buy, 3% tax, 70% to me and 30% to buy back and burn.</div></div>{{/argus}}
         </div>
       </div>
     </section>
@@ -42,12 +43,21 @@
     <section class="section tight">
       <div class="card">
         <h3>3. Check the preview</h3>
-        <p class="muted">Before anything is stored, Claudeploy runs the launch as a dry run against Robinhood Chain. The numbers come from the chain, not from a spreadsheet.</p>
+        <p class="muted">Before anything is stored, Claudeploy runs the launch as a dry run against {{CHAIN_NAME}}. The numbers come from the chain, not from a spreadsheet.</p>
         <ul class="checks">
+          {{#pons}}
           <li><div><b>Supply and fee</b>, read live from the pons factory.</div></li>
           <li><div><b>Dev buy result:</b> how many tokens 0.05 ETH buys on a fresh curve, and what share of supply that is.</div></li>
           <li><div><b>Total cost</b> in ETH, plus a note that gas is on top.</div></li>
           <li><div><b>Warnings:</b> a dev buy above <span data-fill="cap">5%</span> of supply is reduced and you are told; a creator tax above the pons maximum is rejected.</div></li>
+          {{/pons}}
+          {{#argus}}
+          <li><div><b>Supply, opening and bond market caps</b>: 1,000,000,000 tokens, $2,500 to open, $45,000 to lock the liquidity for good. The same for every Argus launch.</div></li>
+          <li><div><b>Tax and split</b>, exactly as they will be written on-chain, forever. Argus keeps 10% of the tax; the rest follows your split between creator, buy back &amp; burn and liquidity. (Argus also has a holders share paid in USDC, but only launchers registered by Argus can use it; Claudeploy tells you if you ask for it.)</div></li>
+          <li><div><b>Dev buy result:</b> how many tokens 20 USDC buys in the fresh pool (1% pool fee and your own buy tax included), and what share of supply that is.</div></li>
+          <li><div><b>Total cost</b> in USDC, plus a note that gas is on top, also in USDC. There is no launch fee.</div></li>
+          <li><div><b>Warnings:</b> a dev buy above <span data-fill="cap">5%</span> of supply is reduced and you are told; a tax above 10% or a split that does not add up to 100% is rejected; a launch with both taxes at 0 is rejected because Argus requires a tax.</div></li>
+          {{/argus}}
         </ul>
         <p class="muted" style="margin-top:14px">You say yes. Claude stores the launch and gives you a link that is valid for 24 hours.</p>
       </div>
@@ -55,44 +65,61 @@
 
     <section class="section tight">
       <div class="card">
-        <h3>4. Sign once</h3>
+        <h3>4. Sign</h3>
         <p class="muted">The link opens the signing page. You connect a browser wallet (MetaMask, Rabby, Phantom with EVM, or your wallet's in-app browser on mobile). Claudeploy then simulates the launch again, this time <b>from your wallet</b>, and shows:</p>
         <ul class="checks">
+          {{#pons}}
           <li><div><b>The exact contract address</b> the token will have. pons derives it from your wallet, the launch terms and a random salt, so it is known before the transaction exists.</div></li>
           <li><div><b>Your balance versus the cost.</b> If the wallet is short, the page says how much ETH it needs on Robinhood Chain.</div></li>
           <li><div><b>Who earns the creator fees.</b> Your wallet, unless you named another address in the chat.</div></li>
+          {{/pons}}
+          {{#argus}}
+          <li><div><b>The exact contract address</b> the token will have. Argus derives it from your wallet and a random salt; Claudeploy computes it the same way and confirms it with the dry run.</div></li>
+          <li><div><b>Your balance versus the cost.</b> If the wallet is short, the page says how much USDC it needs on Arc, gas included.</div></li>
+          <li><div><b>Who earns the creator share.</b> Always the wallet that signs: Argus has no separate fee recipient.</div></li>
+          {{/argus}}
         </ul>
-        <p class="muted" style="margin-top:14px">You press <b>Sign &amp; launch</b>. Your wallet shows one transaction: the pons launch fee plus your dev buy, sent to the pons launch-and-buy router. You approve it there. Claudeploy never sees a key.</p>
+        {{#pons}}<p class="muted" style="margin-top:14px">You press <b>Sign &amp; launch</b>. Your wallet shows one transaction: the pons launch fee plus your dev buy, sent to the pons launch-and-buy router. You approve it there. Claudeploy never sees a key.</p>{{/pons}}
+        {{#argus}}<p class="muted" style="margin-top:14px">You press <b>Sign &amp; launch</b>. With a dev buy, your wallet shows two transactions in a row: an approval of that much USDC for the Argus portal, then the launch itself (token, tax hook, pool and dev buy in one). Without a dev buy it is a single transaction. Claudeploy never sees a key.</p>{{/argus}}
       </div>
     </section>
 
     <section class="section tight">
       <div class="card">
         <h3>5. It's live</h3>
-        <p class="muted">The page waits for the block, reads the pons <code>TokenLaunched</code> event and shows the contract address with links to pons and the explorer. Back in Claude, ask "did it go through?" and the status tool answers with the same address. Claude never invents one; it only reports what the chain confirmed.</p>
+        <p class="muted">The page waits for the block, reads the {{VENUE_SHORT}} <code>TokenLaunched</code> event and shows the contract address with links to {{VENUE_NAME}} and the explorer. Back in Claude, ask "did it go through?" and the status tool answers with the same address. Claude never invents one; it only reports what the chain confirmed.</p>
       </div>
     </section>
 
     <section class="section">
       <h2>Under the hood</h2>
       <div class="grid c2">
-        <div class="card"><h3>Simulation, not estimation</h3><p class="muted">Previews use <code>eth_call</code> with a balance override, so the chain itself computes the outcome even for a wallet that has not connected yet. The signing page repeats it from the real wallet.</p></div>
+        <div class="card"><h3>Simulation, not estimation</h3><p class="muted">Previews use <code>eth_call</code> with a balance override{{#argus}} (and an allowance override for the dev buy){{/argus}}, so the chain itself computes the outcome even for a wallet that has not connected yet. The signing page repeats it from the real wallet.</p></div>
+        {{#pons}}
         <div class="card"><h3>Launch and buy in one transaction</h3><p class="muted">pons cannot fold a dev buy into its factory call, so a manual launch leaves a gap of a few blocks before the creator's first buy. Claudeploy routes both legs through the pons launch-and-buy router. Your buy settles in the same transaction that creates the curve, and you are exempt from the launch-window snipe tax.</p></div>
         <div class="card"><h3>Pinned terms</h3><p class="muted">The pons factory exposes a digest of its current economics. Claudeploy pins that digest into the transaction. If pons changes supply, fees or the graduation threshold between your preview and your signature, the transaction reverts instead of silently repricing.</p></div>
         <div class="card"><h3>Guardrails</h3><p class="muted">Dev buy capped at <span data-fill="cap">5%</span> of supply. Creator tax checked against the pons maximum (<span data-fill="maxTax">10%</span>). Whitelist checked with <code>canLaunch</code>. Slippage floor of 1% on the dev buy and 3% on curve buys. Links expire after 24 hours.</p></div>
+        {{/pons}}
+        {{#argus}}
+        <div class="card"><h3>The hook is mined for you</h3><p class="muted">Every Argus token gets its own Uniswap v4 hook, and v4 only accepts a hook whose address ends in specific bits. The launcher has to find a salt that produces such an address. Claudeploy does that for your wallet in about a quarter of a second, the same way the Argus site does, and predicts the token, the splitter and the hook before you sign.</p></div>
+        <div class="card"><h3>One transaction, whole market</h3><p class="muted">The Argus portal creates the token, the hook, the fee splitter, a Uniswap v4 pool holding the entire supply above the opening price, and your dev buy, all in one call. There is no bonding curve and no migration: at $45,000 market cap the liquidity locks inside the swap that crosses it.</p></div>
+        <div class="card"><h3>Guardrails</h3><p class="muted">Dev buy capped at <span data-fill="cap">5%</span> of supply. Tax checked against the Argus maximum (<span data-fill="maxTax">10%</span> per leg) and the split checked to add up to 100%. Terms re-read before you sign; if Argus changed its contracts, you are told. Slippage floor of 3% on buys. Links expire after 24 hours.</p></div>
+        {{/argus}}
       </div>
     </section>
 
     <section class="section tight">
       <div class="card">
         <h3>6. Give it an agent (optional)</h3>
-        <p class="muted">Say "give OWL an agent". Claudeploy creates a wallet that belongs to the token and hands you a link. You sign once: the token's creator fees now go to that wallet. From then on the agent works alone, in cycles: collects the fees, buys the token back and burns it, airdrops recent buyers, keeps a gas reserve, and writes a post about it. Its page shows everything it did, with the transactions. Add a profile picture and a one-line personality if you like. Connect your own X API keys and it posts by itself. Take the fees back whenever you want, with a signature on the same page.</p>
+        {{#pons}}<p class="muted">Say "give OWL an agent". Claudeploy creates a wallet that belongs to the token and hands you a link. You sign once: the token's creator fees now go to that wallet. From then on the agent works alone, in cycles: collects the fees, buys the token back and burns it, airdrops recent buyers, keeps a gas reserve, and writes a post about it. Its page shows everything it did, with the transactions. Add a profile picture and a one-line personality if you like. Connect your own X API keys and it posts by itself. Take the fees back whenever you want, with a signature on the same page.</p>{{/pons}}
+        {{#argus}}<p class="muted">Say "launch OWL with an agent". On Argus the creator is the wallet that launches, and it cannot be changed later, so the agent launches the token itself: Claudeploy creates a wallet that belongs to the token, predicts the contract address from it, and hands you a link. On that page you send the launch money to the agent wallet (your dev buy plus a few USDC of gas), the agent launches within seconds, and it is the creator. From then on it works alone, in cycles: collects its share of the tax, buys the token back and burns it, airdrops recent buyers, pays you a salary if the rules say so, keeps a gas reserve, and writes a post about it. Its page shows everything it did, with the transactions. Add a profile picture and a one-line personality if you like. Connect your own X API keys and it posts by itself. Take its balance back whenever you want, with a signature on the same page; the agent stays the creator on-chain and forwards every fee to you from then on.</p>{{/argus}}
       </div>
     </section>
 
     <section class="section tight">
       <h2>After the launch</h2>
-      <p class="muted">Claude can keep going. <b>token_info</b> reports price, ETH raised and progress toward graduation for any pons v2 token. <b>prepare_buy</b> returns a signing link to buy more while the token is still on its bonding curve. Once a token graduates to Uniswap v4, Claudeploy points you to pons instead.</p>
+      {{#pons}}<p class="muted">Claude can keep going. <b>token_info</b> reports price, ETH raised and progress toward graduation for any pons v2 token. <b>prepare_buy</b> returns a signing link to buy more while the token is still on its bonding curve. Once a token graduates to Uniswap v4, Claudeploy points you to pons instead.</p>{{/pons}}
+      {{#argus}}<p class="muted">Claude can keep going. <b>token_info</b> reports price in USD, market cap, tax, split and progress to the bond for any Argus token. <b>prepare_buy</b> returns a signing link to buy more through the Uniswap v4 pool, before or after the bond. The first buy from a wallet takes up to three signatures (two one-time approvals, then the swap); later buys take one.</p>{{/argus}}
       <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
         <a class="btn accent" href="/docs#connect">Add to Claude</a>
         <a class="btn ghost" href="/docs">Read the docs</a>

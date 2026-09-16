@@ -1,13 +1,14 @@
 // Regras do produto: validar o pedido, cotar, preparar, vincular a carteira e
-// acompanhar um lancamento (ou uma compra na curva). Nada aqui assina.
+// acompanhar um lancamento (ou uma compra). Nada aqui assina em nome do
+// usuario. O que e especifico da chain mora no venue (chain.js).
 import crypto from 'node:crypto';
 import { z } from 'zod';
 import { isAddress } from 'viem';
-import { LIMITS, PUBLIC_URL, CHAIN, PONS_TOKEN_URL } from './config.js';
+import { LIMITS, PUBLIC_URL, CHAIN, VENUE } from './config.js';
 import { Store } from './store.js';
 import * as chain from './chain.js';
 
-const { parseEther, formatEther, formatUnits, getAddress } = chain;
+const { formatUnits, getAddress } = chain;
 
 export const launches = new Store('launches');
 
@@ -26,11 +27,14 @@ export const CONTROL_CHARS = new RegExp(
   + ch(0x2028) + '-' + ch(0x202e) + ch(0x2060) + '-' + ch(0x2064) + ch(0xfeff) + ']', 'g');
 const clean = (s) => String(s).replace(CONTROL_CHARS, '').trim();
 const address = z.string().trim().refine((v) => isAddress(v), 'invalid EVM address').transform((v) => getAddress(v));
-const ethAmount = z.union([z.string(), z.number()])
-  .transform((v) => String(v).trim().replace(/\s*eth$/i, ''))
-  .refine((v) => /^\d+(\.\d{1,18})?$/.test(v), 'ETH amount must be a decimal number like 0.05')
-  .refine((v) => Number(v) <= 1000, 'ETH amount is too large');
+const unit = chain.quoteSymbol;
+const amountStr = z.union([z.string(), z.number()])
+  .transform((v) => String(v).trim().replace(new RegExp(`\\s*(${unit}|eth|usdc)$`, 'i'), ''))
+  .refine((v) => /^\d+(\.\d{1,18})?$/.test(v), `${unit} amount must be a decimal number like 0.05`)
+  .refine((v) => Number(v) <= (VENUE === 'argus' ? 1_000_000 : 1000), `${unit} amount is too large`);
 const text = (max) => z.string().transform(clean).pipe(z.string().max(max)).default('');
+const bps = z.number().int().min(0).max(10_000);
+const pctToBps = (v) => Math.round(Number(v) * 100);
 
 export const LaunchInput = z.object({
   name: z.string().transform(clean).pipe(z.string().min(1, 'name is required').max(40)),
@@ -40,186 +44,161 @@ export const LaunchInput = z.object({
   socials: z.object({
     twitter: text(200), telegram: text(200), discord: text(200), website: text(200), farcaster: text(200),
   }).default({}),
-  creatorTaxBps: z.number().int().min(0).max(10_000).default(LIMITS.defaultCreatorTaxBps),
+  creatorTaxBps: bps.default(LIMITS.defaultCreatorTaxBps),
+  // Argus: taxas separadas e o split da taxa (soma 100%).
+  buyTaxBps: bps.optional(),
+  sellTaxBps: bps.optional(),
+  split: z.object({ creatorBps: bps, burnBps: bps, holdersBps: bps, liquidityBps: bps }).optional(),
   buybackEnabled: z.boolean().default(false),
-  devBuyEth: ethAmount.default('0'),
+  devBuy: amountStr.default('0'),
   creatorFeeRecipient: address.optional(),
   wallet: address.optional(),
+  // Lancamento pelo agente (o agente e o criador; o dono financia a carteira dele).
+  agent: z.object({
+    vibe: text(200), avatar: text(300),
+    rules: z.record(z.string(), z.any()).optional(),
+  }).optional(),
 });
 
 export const BuyInput = z.object({
   token: address,
-  ethAmount: ethAmount.refine((v) => Number(v) > 0, 'ETH amount must be above zero'),
+  amount: amountStr.refine((v) => Number(v) > 0, `${unit} amount must be above zero`),
   wallet: address.optional(),
 });
+
+// Percentuais que o chat manda (split, taxas) viram pontos-base aqui.
+export function normalizeLaunchRequest(a = {}) {
+  const out = {
+    name: a.name, symbol: a.symbol, description: a.description, logo: a.logo,
+    socials: { twitter: a.twitter, telegram: a.telegram, discord: a.discord, website: a.website, farcaster: a.farcaster },
+    devBuy: a.devBuy ?? a.devBuyEth ?? a.devBuyUsdc,
+    creatorTaxBps: a.creatorTaxBps, buybackEnabled: a.buybackEnabled,
+    creatorFeeRecipient: a.creatorFeeRecipient, wallet: a.wallet,
+  };
+  if (a.buyTaxPct != null) out.buyTaxBps = pctToBps(a.buyTaxPct);
+  if (a.sellTaxPct != null) out.sellTaxBps = pctToBps(a.sellTaxPct);
+  if (a.buyTaxBps != null) out.buyTaxBps = a.buyTaxBps;
+  if (a.sellTaxBps != null) out.sellTaxBps = a.sellTaxBps;
+  if (a.creatorShare != null || a.burnShare != null || a.holdersShare != null || a.liquidityShare != null) {
+    out.split = { creatorBps: pctToBps(a.creatorShare ?? 0), burnBps: pctToBps(a.burnShare ?? 0), holdersBps: pctToBps(a.holdersShare ?? 0), liquidityBps: pctToBps(a.liquidityShare ?? 0) };
+  }
+  if (a.withAgent || a.agent) {
+    const rules = {};
+    for (const k of ['preset', 'buybackPct', 'airdropPct', 'salaryPct', 'rafflePct', 'loyaltyOnly', 'dipBuyPct', 'milestones', 'collectOnly', 'quietHours', 'minPostMin', 'whaleAmount', 'whaleEth']) if (a[k] !== undefined) rules[k] = a[k];
+    out.agent = { vibe: a.vibe, avatar: a.avatar, rules };
+  }
+  return JSON.parse(JSON.stringify(out));
+}
 
 // ---------------------------------------------------------------------------
 // Utilidades.
 const randomSalt = () => `0x${crypto.randomBytes(32).toString('hex')}`;
 const throwaway = () => getAddress(`0x${crypto.randomBytes(20).toString('hex')}`);
-const bpsOf = (part, whole) => (whole > 0n ? Number((part * 10_000n) / whole) : 0);
-const pct = (bps) => `${(bps / 100).toFixed(2)}%`;
+const pct = (b) => `${(b / 100).toFixed(2)}%`;
 const hex = (n) => `0x${n.toString(16)}`;
 const tokensStr = (wei) => Number(formatUnits(wei, 18)).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-export const links = ({ token, curve, txHash }) => ({
-  pons: token ? PONS_TOKEN_URL.replace('{token}', token) : null,
-  explorerToken: token ? `${CHAIN.explorer}/token/${token}` : null,
-  explorerCurve: curve ? `${CHAIN.explorer}/address/${curve}` : null,
-  explorerTx: txHash ? `${CHAIN.explorer}/tx/${txHash}` : null,
-});
+export const links = chain.links;
 
 function mapZodError(e) {
   const issues = e.issues?.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`) ?? [String(e)];
   return new UserError(issues.join('; '), 'INVALID_INPUT');
 }
 
-async function simulateLaunch({ terms, params, devBuyWei, recipient, from, minTokensOut = 0n }) {
-  const tx = chain.buildLaunchTx({ params, devBuyWei, recipient, launchFee: terms.launchFee, minTokensOut });
-  try {
-    const data = await chain.simulate({ from, to: tx.to, data: tx.data, value: tx.value, fund: true });
-    return { tx, ...chain.decodeLaunchResult(tx.via, data) };
-  } catch (e) {
-    const r = chain.explainRevert(e);
-    throw new UserError(`launch simulation failed: ${r.message}`, r.code);
-  }
-}
-
-// Busca binaria pela maior dev buy que fica abaixo do teto. So roda quando o
-// pedido passou do teto; cada passo e um eth_call.
-async function clampDevBuy({ terms, params, recipient, from, requestedWei, capBps }) {
-  let lo = 0n, hi = requestedWei, best = null;
-  const floor = parseEther('0.00001');
-  for (let i = 0; i < 16 && hi - lo > floor; i++) {
-    const mid = (lo + hi) / 2n;
-    if (mid === 0n) break;
-    const sim = await simulateLaunch({ terms, params, devBuyWei: mid, recipient, from });
-    if (bpsOf(sim.tokensOut, terms.supply) <= capBps) { best = { wei: mid, sim }; lo = mid; } else hi = mid;
-  }
-  return best;
-}
+const asUser = (e) => (e instanceof chain.QuoteError ? new UserError(e.message, e.code) : e);
 
 // ---------------------------------------------------------------------------
 // Previa (usada pelo preview_launch e pelo prepare_launch).
-async function quoteLaunch(raw) {
+async function quoteLaunch(raw, { from: forced = null } = {}) {
   let input;
   try { input = LaunchInput.parse(raw); } catch (e) { throw mapZodError(e); }
-
+  if (input.agent && !chain.agentMustLaunch) throw new UserError(`on ${chain.NAME} launch first, then give the token an agent with attach_agent`, 'INVALID_INPUT');
   const terms = await chain.protocolTerms();
   const warnings = [];
-  if (!terms.configEnabled) throw new UserError('pons has this launch config disabled right now', 'CONFIG_DISABLED');
-  if (input.creatorTaxBps > terms.maxCreatorTaxBps) {
-    throw new UserError(`creator tax ${pct(input.creatorTaxBps)} is above the pons maximum of ${pct(terms.maxCreatorTaxBps)}`, 'CREATOR_TAX_TOO_HIGH');
-  }
-  if (input.wallet) {
-    if (!(await chain.canLaunch(input.wallet))) throw new UserError('pons is only accepting launches from whitelisted wallets and this wallet is not on the list', 'NOT_WHITELISTED');
+  if (input.wallet && !input.agent) {
+    if (!(await chain.canLaunch(input.wallet))) throw new UserError(`${chain.SHORT} is only accepting launches from whitelisted wallets and this wallet is not on the list`, 'NOT_WHITELISTED');
   } else if (!terms.launchEnabled) {
-    warnings.push('pons launches are currently whitelisted; the signing wallet must be on the pons list');
+    warnings.push(`${chain.SHORT} launches are currently whitelisted; the signing wallet must be on the list`);
   }
-
-  const from = input.wallet || throwaway();
+  const from = forced || (input.agent ? throwaway() : (input.wallet || throwaway()));
   const salt = randomSalt();
-  const params = {
-    ...input,
-    creatorFeeRecipient: input.creatorFeeRecipient || from,
-    expectedEconomics: terms.economics,
-    salt,
+  let q;
+  try { q = await chain.quoteLaunch({ input, devBuy: chain.parseAmount(input.devBuy), salt, from, terms, exact: false }); } catch (e) { throw asUser(e); }
+  warnings.push(...q.warnings);
+  const devBuyStr = chain.formatAmount(q.devBuy);
+  const summary = {
+    venue: chain.NAME, network: CHAIN.name, unit,
+    name: input.name, symbol: input.symbol, description: input.description, logo: input.logo || null, socials: input.socials,
+    supply: terms.supplyTokens,
+    creatorTax: q.extra?.creatorTax ?? null,
+    creatorTaxBps: input.creatorTaxBps,
+    taxes: q.extra ?? null,
+    buybackEnabled: input.buybackEnabled,
+    creatorFeeRecipient: input.agent ? 'the agent wallet (it launches the token)' : (input.creatorFeeRecipient || 'the wallet that signs'),
+    devBuy: q.devBuy > 0n ? { amount: devBuyStr, unit, tokens: tokensStr(q.tokensOut), shareOfSupply: pct(q.devBuyBps), capShareOfSupply: pct(LIMITS.maxDevBuyBps) } : null,
+    cost: { ...q.cost, plusGas: `network gas is paid by the signing wallet on top${VENUE === 'argus' ? ' (in USDC on Arc)' : ''}` },
+    graduatesAt: chain.termsSummary(terms).graduatesAt,
+    route: q.route,
+    predicted: (input.wallet && !input.agent) ? { token: q.predicted.token, curve: q.predicted.curve } : null,
+    agent: input.agent ? { vibe: input.agent.vibe || '', howItWorks: `the agent gets a wallet of its own and launches the token from it, so it is the creator on ${chain.NAME} and receives the creator share of the tax; you send the launch money to the agent wallet on the signing page` } : null,
+    warnings,
   };
-  let devBuyWei = parseEther(input.devBuyEth);
-  let sim = await simulateLaunch({ terms, params, devBuyWei, recipient: from, from });
-
-  if (devBuyWei > 0n) {
-    const bps = bpsOf(sim.tokensOut, terms.supply);
-    if (bps > LIMITS.maxDevBuyBps) {
-      const clamped = await clampDevBuy({ terms, params, recipient: from, from, requestedWei: devBuyWei, capBps: LIMITS.maxDevBuyBps });
-      if (!clamped) throw new UserError(`even the smallest dev buy exceeds the ${pct(LIMITS.maxDevBuyBps)} cap`, 'DEV_BUY_CAP');
-      warnings.push(`dev buy reduced from ${input.devBuyEth} to ${formatEther(clamped.wei)} ETH so it stays under ${pct(LIMITS.maxDevBuyBps)} of supply`);
-      devBuyWei = clamped.wei;
-      sim = clamped.sim;
-    }
-  }
-
-  const devBuyBps = bpsOf(sim.tokensOut, terms.supply);
-  return {
-    input, terms, salt, devBuyWei, sim, warnings,
-    summary: {
-      network: CHAIN.name,
-      name: input.name,
-      symbol: input.symbol,
-      description: input.description,
-      logo: input.logo || null,
-      socials: input.socials,
-      supply: terms.supplyTokens,
-      creatorTax: pct(input.creatorTaxBps),
-      creatorTaxBps: input.creatorTaxBps,
-      buybackEnabled: input.buybackEnabled,
-      creatorFeeRecipient: input.creatorFeeRecipient || 'the wallet that signs',
-      devBuy: devBuyWei > 0n ? {
-        eth: formatEther(devBuyWei),
-        tokens: tokensStr(sim.tokensOut),
-        shareOfSupply: pct(devBuyBps),
-        capShareOfSupply: pct(LIMITS.maxDevBuyBps),
-      } : null,
-      cost: {
-        launchFeeEth: terms.launchFeeEth,
-        devBuyEth: formatEther(devBuyWei),
-        totalEth: formatEther(terms.launchFee + devBuyWei),
-        plusGas: 'network gas is paid by the signing wallet on top',
-      },
-      graduatesAtEth: terms.graduationThresholdEth,
-      route: sim.tx.via === 'router' ? 'pons launch-and-buy router (launch and dev buy in one transaction)' : 'pons factory',
-      predicted: input.wallet ? { token: sim.token, curve: sim.curve } : null,
-      warnings,
-    },
-  };
+  return { input, terms, salt, q, warnings, summary };
 }
 
 export async function preview(raw) {
-  const q = await quoteLaunch(raw);
-  return q.summary;
+  const { summary } = await quoteLaunch(raw);
+  return summary;
 }
 
 // ---------------------------------------------------------------------------
 // Prepara: guarda o pedido e devolve o link de assinatura.
 export async function prepare(raw) {
-  const q = await quoteLaunch(raw);
+  const { input, terms, salt, q, warnings, summary } = await quoteLaunch(raw);
   const now = Date.now();
-  const rec = launches.put({
+  const rec = {
     id: launches.newId(),
-    kind: 'launch',
+    kind: input.agent ? 'agent-launch' : 'launch',
     status: 'awaiting_wallet',
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + LIMITS.launchTtlMs).toISOString(),
     network: CHAIN.network,
     chainId: CHAIN.id,
+    venue: VENUE,
     input: {
-      name: q.input.name, symbol: q.input.symbol, description: q.input.description, logo: q.input.logo,
-      socials: q.input.socials, creatorTaxBps: q.input.creatorTaxBps, buybackEnabled: q.input.buybackEnabled,
-      creatorFeeRecipient: q.input.creatorFeeRecipient || null,
+      name: input.name, symbol: input.symbol, description: input.description, logo: input.logo,
+      socials: input.socials, creatorTaxBps: input.creatorTaxBps, buyTaxBps: input.buyTaxBps ?? null, sellTaxBps: input.sellTaxBps ?? null, split: input.split ?? null,
+      buybackEnabled: input.buybackEnabled, creatorFeeRecipient: input.creatorFeeRecipient || null,
     },
-    devBuyEth: formatEther(q.devBuyWei),
-    salt: q.salt,
-    terms: { launchFeeEth: q.terms.launchFeeEth, supply: q.terms.supplyTokens, economics: q.terms.economics },
-    summary: q.summary,
-    warnings: q.warnings,
-    wallet: null, tx: null, predicted: null, funding: null, txHash: null, token: null, curve: null, tokensOut: null, error: null,
-  });
+    devBuy: chain.formatAmount(q.devBuy),
+    salt,
+    terms: q.terms,
+    summary,
+    warnings,
+    agent: null,
+    wallet: null, tx: null, pre: [], predicted: null, funding: null, txHash: null, token: null, curve: null, tokensOut: null, error: null,
+  };
+  if (input.agent) {
+    // O agente nasce agora, com carteira propria; o token e previsto a partir dela.
+    const a = await hooks.createAgentForLaunch?.({ rec, agent: input.agent, terms });
+    if (!a) throw new UserError('agents are not enabled on this server', 'AGENTS_DISABLED');
+    rec.agent = { address: a.address, page: a.page, predictedToken: a.predictedToken, vibe: input.agent.vibe || '' };
+    rec.summary.agent = { ...rec.summary.agent, wallet: a.address, predictedToken: a.predictedToken, page: a.page };
+  }
+  launches.put(rec);
   return publicRecord(rec);
 }
 
 // ---------------------------------------------------------------------------
-// Compra na curva de um token ja lancado.
+// Compra de um token ja lancado.
 export async function prepareBuy(raw) {
   let input;
-  try { input = BuyInput.parse(raw); } catch (e) { throw mapZodError(e); }
-  const info = await chain.tokenInfo(input.token);
-  if (!info) throw new UserError('this address is not a pons v2 launch on this network', 'NOT_PONS_TOKEN');
-  if (info.graduated || info.phase !== 'bonding curve') {
-    throw new UserError(`${info.symbol} has left the bonding curve (${info.phase}); Claudeploy only buys on the curve`, 'GRADUATED');
-  }
+  try { input = BuyInput.parse({ ...raw, amount: raw.amount ?? raw.ethAmount ?? raw.usdcAmount }); } catch (e) { throw mapZodError(e); }
   const from = input.wallet || throwaway();
-  const quoteInWei = parseEther(input.ethAmount);
-  const sim = await simulateBuy({ curve: info.curve, quoteInWei, recipient: from, from });
+  const amount = chain.parseAmount(input.amount);
+  let q;
+  try { q = await chain.quoteBuy({ token: input.token, amount, from, exact: false }); } catch (e) { throw asUser(e); }
+  const info = q.info;
   const now = Date.now();
   const rec = launches.put({
     id: launches.newId(),
@@ -229,26 +208,29 @@ export async function prepareBuy(raw) {
     expiresAt: new Date(now + LIMITS.launchTtlMs).toISOString(),
     network: CHAIN.network,
     chainId: CHAIN.id,
+    venue: VENUE,
     token: info.token, curve: info.curve, symbol: info.symbol, name: info.name,
-    ethAmount: input.ethAmount,
+    amount: input.amount,
     summary: {
-      network: CHAIN.name,
+      venue: chain.NAME, network: CHAIN.name, unit,
       token: info.token, name: info.name, symbol: info.symbol,
-      spend: { eth: input.ethAmount, tokens: tokensStr(sim.tokensOut) },
-      priceEth: info.priceEth,
-      graduationProgress: info.graduationProgress,
+      spend: { amount: input.amount, unit, tokens: tokensStr(q.tokensOut) },
+      price: info.price, priceUnit: VENUE === 'argus' ? 'USD' : unit,
+      graduationProgress: info.graduationProgress, graduationLabel: info.graduationLabel,
       plusGas: 'network gas is paid by the signing wallet on top',
+      steps: VENUE === 'argus' ? 'the first buy from a wallet takes up to three signatures: approve USDC for Permit2, approve the Uniswap router, then the swap; later buys take one' : 'one signature',
     },
     warnings: [],
-    wallet: null, tx: null, predicted: null, funding: null, txHash: null, tokensOut: null, error: null,
+    wallet: null, tx: null, pre: [], predicted: null, funding: null, txHash: null, tokensOut: null, error: null,
   });
   return publicRecord(rec);
 }
 
 // ---------------------------------------------------------------------------
-// Handover das taxas de criador para a carteira de um agente. Quem assina e o
-// recebedor atual; a pagina recusa qualquer outra carteira.
+// Handover das taxas de criador para a carteira de um agente (so onde o
+// protocolo permite trocar o recebedor). Quem assina e o recebedor atual.
 export async function prepareHandover({ token, name, symbol, agent, currentRecipient }) {
+  if (!chain.supportsHandover) throw new UserError(`${chain.NAME} has no way to hand creator fees to another wallet; on ${chain.NAME} the agent launches the token itself (prepare_launch with withAgent)`, 'NO_HANDOVER');
   const now = Date.now();
   const rec = launches.put({
     id: launches.newId(),
@@ -258,32 +240,23 @@ export async function prepareHandover({ token, name, symbol, agent, currentRecip
     expiresAt: new Date(now + LIMITS.launchTtlMs).toISOString(),
     network: CHAIN.network,
     chainId: CHAIN.id,
+    venue: VENUE,
     token, name, symbol, agent, currentRecipient,
     summary: {
-      network: CHAIN.name, token, name, symbol, agent, currentRecipient,
+      venue: chain.NAME, network: CHAIN.name, unit, token, name, symbol, agent, currentRecipient,
       whatHappens: `${symbol}'s creator fees will be paid to the agent wallet from now on. The agent uses them to buy back, burn, airdrop and keep a gas reserve. You can take them back any time from the agent page.`,
       plusGas: 'network gas is paid by the signing wallet',
     },
     warnings: [],
-    wallet: null, tx: null, predicted: null, funding: null, txHash: null, error: null,
+    wallet: null, tx: null, pre: [], predicted: null, funding: null, txHash: null, error: null,
   });
   return publicRecord(rec);
 }
 
-// Quem quiser reagir a um handover confirmado registra aqui (evita import circular).
-// agentInfo devolve personalidade e divisao para a pagina de assinatura mostrar.
-export const hooks = { handoverConfirmed: null, agentInfo: null };
+// Quem quiser reagir a eventos registra aqui (evita import circular).
+export const hooks = { handoverConfirmed: null, agentInfo: null, createAgentForLaunch: null, agentLaunch: null };
 
-async function simulateBuy({ curve, quoteInWei, recipient, from, minTokensOut = 0n }) {
-  const tx = chain.buildBuyTx({ curve, quoteInWei, minTokensOut, recipient });
-  try {
-    const data = await chain.simulate({ from, to: tx.to, data: tx.data, value: tx.value, fund: true });
-    return { tx, ...chain.decodeBuyResult(data) };
-  } catch (e) {
-    const r = chain.explainRevert(e);
-    throw new UserError(`buy simulation failed: ${r.message}`, r.code);
-  }
-}
+const toHexTx = (t) => ({ label: t.label || null, to: t.to, data: t.data, value: hex(t.value || 0n) });
 
 // ---------------------------------------------------------------------------
 // Vincula a carteira que vai assinar: simula de verdade a partir dela (o
@@ -292,82 +265,67 @@ export async function bind(id, walletRaw) {
   const rec = getOrThrow(id);
   if (!isAddress(walletRaw || '')) throw new UserError('invalid wallet address', 'INVALID_WALLET');
   const wallet = getAddress(walletRaw);
-  if (['submitted', 'live', 'done'].includes(rec.status)) throw new UserError('this transaction was already signed', 'ALREADY_SIGNED');
+  if (['submitted', 'live', 'done', 'launching'].includes(rec.status)) throw new UserError('this transaction was already signed', 'ALREADY_SIGNED');
   if (Date.parse(rec.expiresAt) < Date.now()) { rec.status = 'expired'; launches.put(rec); throw new UserError('this link expired; ask Claude to prepare it again', 'EXPIRED'); }
 
-  let sim, tx, predicted;
-  if (rec.kind === 'launch') {
-    const terms = await chain.protocolTerms({ fresh: true });
-    if (!(await chain.canLaunch(wallet))) throw new UserError('pons is only accepting launches from whitelisted wallets and this wallet is not on the list', 'NOT_WHITELISTED');
-    if (terms.economics !== rec.terms.economics) {
-      const note = 'pons updated its launch terms since the preview; this launch is pinned to the current terms';
-      if (!(rec.warnings || []).includes(note)) rec.warnings = [...(rec.warnings || []), note];
-      rec.terms = { launchFeeEth: terms.launchFeeEth, supply: terms.supplyTokens, economics: terms.economics };
-    }
-    const params = {
-      ...rec.input,
-      creatorFeeRecipient: rec.input.creatorFeeRecipient || wallet,
-      expectedEconomics: terms.economics,
-      salt: rec.salt,
-    };
-    const devBuyWei = parseEther(rec.devBuyEth);
-    sim = await simulateLaunch({ terms, params, devBuyWei, recipient: wallet, from: wallet });
-    // Recompoe com o piso de slippage: a curva nasce na mesma transacao, entao
-    // 1% de folga cobre so o arredondamento.
-    const minTokensOut = (sim.tokensOut * 99n) / 100n;
-    tx = chain.buildLaunchTx({ params, devBuyWei, recipient: wallet, launchFee: terms.launchFee, minTokensOut });
-    predicted = { token: sim.token, curve: sim.curve, tokensOut: tokensStr(sim.tokensOut) };
-    rec.creatorFeeRecipient = params.creatorFeeRecipient;
-  } else if (rec.kind === 'handover') {
-    const launched = await chain.launchedToken(rec.token);
-    const current = launched?.creatorFeeRecipient || rec.currentRecipient;
-    if (getAddress(current) !== wallet) throw new UserError(`only the current fee recipient (${current}) can hand the fees over`, 'FORBIDDEN');
-    tx = chain.buildHandoverTx({ token: rec.token, newRecipient: rec.agent });
-    const info = hooks.agentInfo?.(rec.token);
-    if (info) {
-      rec.summary.vibe = info.vibe || '';
-      rec.summary.avatar = info.avatar || null;
-      rec.summary.split = `${info.rules.buybackBps / 100}% buy back & burn, ${info.rules.airdropBps / 100}% airdrop to recent buyers, ${info.rules.treasury ? `${info.rules.rentBps / 100}% rent, ` : ''}the rest stays as gas reserve`;
-    }
-    try {
-      await chain.simulate({ from: wallet, to: tx.to, data: tx.data, value: 0n, fund: true });
-    } catch (e) {
-      const r = chain.explainRevert(e);
-      throw new UserError(`handover simulation failed: ${r.message}`, r.code);
-    }
-    predicted = { token: rec.token, curve: null, tokensOut: null };
-  } else {
-    const quoteInWei = parseEther(rec.ethAmount);
-    sim = await simulateBuy({ curve: rec.curve, quoteInWei, recipient: wallet, from: wallet });
-    // Outros podem negociar antes de a transacao entrar: 3% de folga.
-    const minTokensOut = (sim.tokensOut * 97n) / 100n;
-    tx = chain.buildBuyTx({ curve: rec.curve, quoteInWei, minTokensOut, recipient: wallet });
-    predicted = { token: rec.token, curve: rec.curve, tokensOut: tokensStr(sim.tokensOut) };
-  }
-
-  if (rec.kind === 'handover') tx.value = 0n;
-  const balance = await chain.getBalance(wallet);
-  let gas = null, funding;
+  let tx, pre = [], predicted, funding;
   try {
-    gas = await chain.estimateGas({ from: wallet, to: tx.to, data: tx.data, value: tx.value });
-    funding = { ok: true, balanceEth: formatEther(balance), requiredEth: formatEther(tx.value), message: null };
-  } catch (e) {
-    const r = chain.explainRevert(e);
-    const short = balance < tx.value;
-    funding = {
-      ok: false,
-      balanceEth: formatEther(balance),
-      requiredEth: formatEther(tx.value),
-      message: short
-        ? `this wallet holds ${formatEther(balance)} ETH and needs at least ${formatEther(tx.value)} ETH plus gas on ${CHAIN.name}`
-        : r.message,
-    };
-  }
+    if (rec.kind === 'launch') {
+      const terms = await chain.protocolTerms({ fresh: true });
+      if (!(await chain.canLaunch(wallet))) throw new UserError(`${chain.SHORT} is only accepting launches from whitelisted wallets and this wallet is not on the list`, 'NOT_WHITELISTED');
+      if (rec.terms?.pin && terms.pin !== rec.terms.pin) {
+        const note = `${chain.SHORT} updated its launch terms since the preview; this launch is pinned to the current terms`;
+        if (!(rec.warnings || []).includes(note)) rec.warnings = [...(rec.warnings || []), note];
+      }
+      const q = await chain.quoteLaunch({ input: rec.input, devBuy: chain.parseAmount(rec.devBuy), salt: rec.salt, from: wallet, terms, exact: true });
+      rec.terms = q.terms;
+      tx = q.tx; pre = q.pre;
+      predicted = { token: q.predicted.token, curve: q.predicted.curve, tokensOut: tokensStr(q.tokensOut) };
+      rec.creatorFeeRecipient = q.creatorFeeRecipient;
+      funding = await chain.fundingCheck({ wallet, tx, pre, devBuy: q.devBuy });
+    } else if (rec.kind === 'agent-launch') {
+      // O dono nao lanca: ele manda o dinheiro do lancamento para a carteira do agente.
+      const terms = await chain.protocolTerms({ fresh: true });
+      const q = await chain.quoteLaunch({ input: rec.input, devBuy: chain.parseAmount(rec.devBuy), salt: rec.salt, from: rec.agent.address, terms, exact: false });
+      const need = hooks.agentLaunchBudget ? hooks.agentLaunchBudget(q) : q.devBuy;
+      tx = chain.fundingTx ? chain.fundingTx(rec.agent.address, need) : { to: rec.agent.address, data: '0x', value: need };
+      predicted = { token: q.predicted.token, curve: q.predicted.curve, tokensOut: tokensStr(q.tokensOut) };
+      rec.agent.predictedToken = q.predicted.token;
+      rec.agent.budget = chain.formatAmount(need);
+      rec.summary.agent = { ...(rec.summary.agent || {}), send: `${chain.formatAmount(need)} ${unit}`, predictedToken: q.predicted.token };
+      funding = await chain.fundingCheck({ wallet, tx, pre: [], devBuy: need });
+    } else if (rec.kind === 'handover') {
+      const current = (await chain.feeRecipient(rec.token)) || rec.currentRecipient;
+      if (getAddress(current) !== wallet) throw new UserError(`only the current fee recipient (${current}) can hand the fees over`, 'FORBIDDEN');
+      tx = chain.buildHandoverTx({ token: rec.token, newRecipient: rec.agent });
+      const info = hooks.agentInfo?.(rec.token);
+      if (info) {
+        rec.summary.vibe = info.vibe || '';
+        rec.summary.avatar = info.avatar || null;
+        rec.summary.split = info.split;
+      }
+      try {
+        await chain.simulate({ from: wallet, to: tx.to, data: tx.data, value: 0n, fund: true });
+      } catch (e) {
+        const r = chain.explainRevert(e);
+        throw new UserError(`handover simulation failed: ${r.message}`, r.code);
+      }
+      predicted = { token: rec.token, curve: null, tokensOut: null };
+      funding = await chain.fundingCheck({ wallet, tx, pre: [], devBuy: 0n });
+    } else {
+      const amount = chain.parseAmount(rec.amount);
+      const q = await chain.quoteBuy({ token: rec.token, amount, from: wallet, exact: true });
+      tx = q.tx; pre = q.pre;
+      predicted = { token: rec.token, curve: rec.curve, tokensOut: tokensStr(q.tokensOut) };
+      funding = await chain.fundingCheckBuy({ wallet, tx, pre, amount });
+    }
+  } catch (e) { throw asUser(e); }
 
   rec.wallet = wallet;
-  rec.tx = { to: tx.to, data: tx.data, value: hex(tx.value), gas: gas ? hex((gas * 120n) / 100n) : null, chainId: hex(BigInt(CHAIN.id)) };
+  rec.tx = { to: tx.to, data: tx.data, value: hex(tx.value || 0n), gas: funding.gas ? hex((funding.gas * 120n) / 100n) : null, chainId: hex(BigInt(CHAIN.id)) };
+  rec.pre = pre.map(toHexTx);
   rec.predicted = predicted;
-  rec.funding = funding;
+  rec.funding = { ok: funding.ok, balance: funding.balance, required: funding.required, unit: funding.unit, message: funding.message, balanceEth: funding.balance, requiredEth: funding.required };
   rec.status = funding.ok ? 'ready' : 'needs_funds';
   rec.boundAt = new Date().toISOString();
   launches.put(rec);
@@ -427,20 +385,43 @@ function watch(rec) {
       && eq(tx.input, rec.tx.data) && BigInt(tx.value ?? 0) === BigInt(rec.tx.value);
     if (!same) return fail(rec, 'the submitted transaction is not the one prepared for this link');
     // 3) esperar o recibo
-    const r = await chain.waitForReceipt(rec.txHash);
+    const r = await chain.waitForReceipt(rec.txHash, { kind: rec.kind === 'buy' ? 'buy' : rec.kind === 'launch' ? 'launch' : 'transfer', wallet: rec.wallet, token: rec.token });
     if (!r.ok) return fail(rec, 'the transaction reverted on-chain');
+    rec.blockNumber = r.blockNumber.toString();
     if (rec.kind === 'handover') {
       rec.status = 'done';
       rec.error = null;
       rec.confirmedAt = new Date().toISOString();
-      rec.blockNumber = r.blockNumber.toString();
       launches.put(rec);
       console.log(`[handover] ${rec.id} confirmed for ${rec.symbol}`);
       try { await hooks.handoverConfirmed?.(rec); } catch (e) { console.error('[handover hook]', e); }
       return;
     }
+    if (rec.kind === 'agent-launch') {
+      // O dinheiro chegou na carteira do agente: agora o agente lanca.
+      rec.status = 'launching';
+      rec.error = null;
+      rec.fundedAt = new Date().toISOString();
+      launches.put(rec);
+      console.log(`[agent-launch] ${rec.id} funded; agent ${rec.agent.address} launching ${rec.input.symbol}`);
+      try {
+        const out = await hooks.agentLaunch?.(rec);
+        if (!out?.ok) return fail(rec, out?.error || 'the agent could not launch the token');
+        rec.status = 'live';
+        rec.token = out.token;
+        rec.curve = out.curve;
+        rec.tokensOut = tokensStr(out.tokensOut || 0n);
+        rec.launchTxHash = out.hash;
+        rec.confirmedAt = new Date().toISOString();
+        launches.put(rec);
+        console.log(`[agent-launch] ${rec.id} live token=${rec.token}`);
+      } catch (e) {
+        return fail(rec, `the agent could not launch: ${String(e?.shortMessage || e?.message || e).split('\n')[0].slice(0, 160)}`);
+      }
+      return;
+    }
     if (rec.kind === 'launch') {
-      if (!r.token) return fail(rec, 'the transaction confirmed but no pons launch event was found');
+      if (!r.token) return fail(rec, `the transaction confirmed but no ${chain.SHORT} launch event was found`);
       rec.status = 'live';
       rec.token = r.token;
       rec.curve = r.curve;
@@ -451,7 +432,6 @@ function watch(rec) {
     }
     rec.error = null;
     rec.confirmedAt = new Date().toISOString();
-    rec.blockNumber = r.blockNumber.toString();
     launches.put(rec);
     console.log(`[launch] ${rec.id} ${rec.status}${rec.token ? ` token=${rec.token}` : ''}`);
   })().catch((e) => {
@@ -463,6 +443,16 @@ function watch(rec) {
 
 export function resumeWatchers() {
   for (const rec of launches.list((r) => r.status === 'submitted' && r.txHash)) watch(rec);
+  // Lancamentos pelo agente que ficaram no meio (o processo caiu depois do dinheiro chegar).
+  for (const rec of launches.list((r) => r.kind === 'agent-launch' && r.status === 'launching')) {
+    (async () => {
+      try {
+        const out = await hooks.agentLaunch?.(rec);
+        if (!out?.ok) return fail(rec, out?.error || 'the agent could not launch the token');
+        rec.status = 'live'; rec.token = out.token; rec.curve = out.curve; rec.tokensOut = tokensStr(out.tokensOut || 0n); rec.launchTxHash = out.hash; rec.confirmedAt = new Date().toISOString(); launches.put(rec);
+      } catch (e) { fail(rec, `the agent could not launch: ${String(e?.message || e).slice(0, 160)}`); }
+    })();
+  }
 }
 
 // Poda: pedidos nunca assinados somem um dia depois de expirar; o total de
@@ -491,25 +481,44 @@ function getOrThrow(id) {
   return rec;
 }
 
+export const get = (id) => launches.get(String(id || '')) ?? null;
+
 export function status(id) { return publicRecord(getOrThrow(id)); }
 
 export function recent(limit = 20) {
   return launches
-    .list((r) => r.kind === 'launch' && r.status === 'live')
+    .list((r) => (r.kind === 'launch' || r.kind === 'agent-launch') && r.status === 'live')
     .sort((a, b) => Date.parse(b.confirmedAt) - Date.parse(a.confirmedAt))
     .slice(0, Math.max(1, Math.min(100, Number(limit) || 20)))
     .map((r) => ({
       id: r.id, name: r.input.name, symbol: r.input.symbol, token: r.token, curve: r.curve,
-      deployer: r.wallet, confirmedAt: r.confirmedAt, links: links({ token: r.token, curve: r.curve, txHash: r.txHash }),
+      deployer: r.kind === 'agent-launch' ? r.agent?.address : r.wallet, owner: r.wallet, byAgent: r.kind === 'agent-launch',
+      confirmedAt: r.confirmedAt, links: links({ token: r.token, curve: r.curve, txHash: r.launchTxHash || r.txHash }),
     }));
 }
 
+// Registros antigos (da primeira versao, so pons) ganham os nomes novos na leitura.
+function upgrade(rec) {
+  if (rec.devBuy === undefined && rec.devBuyEth !== undefined) rec.devBuy = rec.devBuyEth;
+  if (rec.amount === undefined && rec.ethAmount !== undefined) rec.amount = rec.ethAmount;
+  if (rec.pre === undefined) rec.pre = [];
+  const s = rec.summary;
+  if (s?.cost && s.cost.total === undefined && s.cost.totalEth !== undefined) s.cost = { launchFee: s.cost.launchFeeEth, devBuy: s.cost.devBuyEth, total: s.cost.totalEth, unit: 'ETH', plusGas: s.cost.plusGas };
+  if (s?.devBuy && s.devBuy.amount === undefined && s.devBuy.eth !== undefined) s.devBuy = { ...s.devBuy, amount: s.devBuy.eth, unit: 'ETH' };
+  if (s?.spend && s.spend.amount === undefined && s.spend.eth !== undefined) s.spend = { ...s.spend, amount: s.spend.eth, unit: 'ETH' };
+  if (s && s.unit === undefined) s.unit = 'ETH';
+  if (rec.funding && rec.funding.balance === undefined && rec.funding.balanceEth !== undefined) rec.funding = { ...rec.funding, balance: rec.funding.balanceEth, required: rec.funding.requiredEth, unit: 'ETH' };
+  return rec;
+}
+
 export function publicRecord(rec) {
+  upgrade(rec);
   const { salt, ...rest } = rec; // o salt nao e segredo, mas tambem nao e util fora daqui
   return {
     ...rest,
     url: `${PUBLIC_URL}/l/${rec.id}`,
-    links: links({ token: rec.token || rec.predicted?.token, curve: rec.curve || rec.predicted?.curve, txHash: rec.txHash }),
+    links: links({ token: rec.token || rec.predicted?.token, curve: rec.curve || rec.predicted?.curve, txHash: rec.launchTxHash || rec.txHash }),
     explorer: CHAIN.explorer,
+    unit,
   };
 }

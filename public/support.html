@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Support · Claudeploy</title>
-  <meta name="description" content="Answers to the questions people hit while launching on pons through Claude: wallets, chains, balances, expired links, whitelists, fees, graduation.">
+  <meta name="description" content="Answers to the questions people hit while launching on {{VENUE_NAME}} through Claude: wallets, chains, balances, expired links, fees, agents.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -31,20 +31,31 @@
     <section class="section tight">
       <h2 style="font-size:24px">Signing page</h2>
       <details><summary>"No browser wallet found."</summary><p>The signing page needs an injected EVM wallet: MetaMask, Rabby, Phantom with EVM enabled, Coinbase Wallet, or similar. On a phone, open the link inside your wallet's built-in browser. WalletConnect is not supported yet.</p></details>
-      <details><summary>My wallet asks to add or switch to an unknown network.</summary><p>That is Robinhood Chain (chain id <span data-fill="chainId">4663</span>). Approve it. The page supplies the official RPC and explorer; you can verify them on the <a href="/docs#network">docs page</a>.</p></details>
-      <details><summary>"This wallet needs ETH on Robinhood Chain."</summary><p>The wallet you connected holds less than the launch fee plus your dev buy plus gas, on Robinhood Chain specifically. Bridge ETH to Robinhood Chain, then press <b>Re-check balance</b>.</p></details>
-      <details><summary>The link expired.</summary><p>Prepared launches are valid for 24 hours because pons terms can change. Ask Claude to prepare it again; the preview takes seconds.</p></details>
-      <details><summary>"pons is only accepting launches from whitelisted wallets."</summary><p>pons can restrict launches to a whitelist. When it does, only wallets on that list can launch, through Claudeploy or anywhere else. Check <a href="https://docs.ponsfamily.com" target="_blank" rel="noopener">pons</a> for how to get on it.</p></details>
-      <details><summary>Will the contract address really be the one shown?</summary><p>Yes. pons derives it from your wallet, the pinned terms and a random salt chosen when the launch was prepared. If anything that feeds the address changed, the transaction would revert rather than deploy elsewhere.</p></details>
+      <details><summary>My wallet asks to add or switch to an unknown network.</summary><p>That is {{CHAIN_NAME}} (chain id <span data-fill="chainId">{{CHAIN_ID}}</span>). Approve it. The page supplies the official RPC and explorer; you can verify them on the <a href="/docs#network">docs page</a>.</p></details>
+      <details><summary>"This wallet needs {{UNIT}} on {{CHAIN_NAME}}."</summary><p>{{#pons}}The wallet you connected holds less than the launch fee plus your dev buy plus gas, on Robinhood Chain specifically. Bridge ETH to Robinhood Chain, then press <b>Re-check balance</b>.{{/pons}}{{#argus}}The wallet you connected holds less USDC than your dev buy plus gas, on Arc specifically. On Arc, gas is paid in USDC too. Bridge USDC to Arc (Circle's CCTP works natively), then press <b>Re-check balance</b>.{{/argus}}</p></details>
+      {{#argus}}<details><summary>Why does the page ask for two or three signatures?</summary><p>With a dev buy, the launch needs one approval first (USDC for the Argus portal), then the launch itself. A buy through the Uniswap v4 pool needs, the first time only, an approval of USDC for Permit2 and an approval of the router on Permit2; later buys are a single signature. The page walks you through them one at a time and waits for each to confirm.</p></details>{{/argus}}
+      <details><summary>The link expired.</summary><p>Prepared launches are valid for 24 hours because {{VENUE_SHORT}} terms can change. Ask Claude to prepare it again; the preview takes seconds.</p></details>
+      {{#pons}}<details><summary>"pons is only accepting launches from whitelisted wallets."</summary><p>pons can restrict launches to a whitelist. When it does, only wallets on that list can launch, through Claudeploy or anywhere else. Check <a href="https://docs.ponsfamily.com" target="_blank" rel="noopener">pons</a> for how to get on it.</p></details>{{/pons}}
+      <details><summary>Will the contract address really be the one shown?</summary><p>Yes. {{#pons}}pons derives it from your wallet, the pinned terms and a random salt chosen when the launch was prepared.{{/pons}}{{#argus}}Argus derives it from the launching wallet and a random salt chosen when the launch was prepared (a CREATE2 clone of the Argus token). Claudeploy computes it the same way and also runs the launch as a dry run to confirm.{{/argus}} If anything that feeds the address changed, the transaction would revert rather than deploy elsewhere.</p></details>
       <details><summary>I rejected the transaction by mistake.</summary><p>Nothing happened on-chain. Press <b>Sign &amp; launch</b> again.</p></details>
     </section>
 
     <section class="section tight">
       <h2 style="font-size:24px">After launch</h2>
+      {{#pons}}
       <details><summary>Where do the creator fees go?</summary><p>To the creator fee recipient in the launch: your wallet, unless you named another address in the chat. pons holds them in its fee escrow; claiming is done on pons, not here.</p></details>
       <details><summary>Can I sell my dev buy?</summary><p>Yes, on pons or any wallet that can call the bonding curve. Claudeploy only prepares launches and buys.</p></details>
-      <details><summary>What is graduation?</summary><p>When a curve raises <span data-fill="grad">4.2</span> ETH, pons moves the token to a Uniswap v4 pool. From then on trades happen there. Claudeploy's buy tool stops at graduation and points you to pons.</p></details>
+      <details><summary>What is graduation?</summary><p>When a curve raises <span data-fill="gradValue">4.2</span> ETH, pons moves the token to a Uniswap v4 pool. From then on trades happen there. Claudeploy's buy tool stops at graduation and points you to pons.</p></details>
       <details><summary>Can Claudeploy undo a launch?</summary><p>No. Nobody can. A token on pons is a contract on Robinhood Chain; once deployed it stays deployed. That is why the preview comes first and the signature is yours.</p></details>
+      {{/pons}}
+      {{#argus}}
+      <details><summary>Where do the creator fees go?</summary><p>Every buy and sell pays the fixed tax. Argus keeps 10% of it; the rest is split the way the launch set it: creator, buy back &amp; burn and liquidity. The creator share is credited to the wallet that launched, in USDC, inside the token's splitter contract, and claimed on Argus (or by the agent, if the agent launched).</p></details>
+      <details><summary>Can I give holders a share of the tax?</summary><p>Argus has a holders share (USDC pushed to every holder pro rata, no claim), but the Argus contracts only create the dividend tracker for launchers registered by Argus. Claudeploy checks that before the preview and tells you when a wallet is not registered. Regular launches split the tax between the creator, buy back &amp; burn and liquidity.</p></details>
+      <details><summary>Can I change the tax later?</summary><p>No. Buy tax, sell tax and the split are fixed at launch, forever. That is the Argus design: every trader knows the rules before the first trade.</p></details>
+      <details><summary>What is the bond at $45,000?</summary><p>The token opens at a $2,500 market cap in a Uniswap v4 pool that holds the whole supply. When a buy pushes the market cap past $45,000, the liquidity locks permanently, inside that same transaction. Trading continues in the same pool; nothing migrates.</p></details>
+      <details><summary>Why does my agent have to launch the token?</summary><p>On Argus the creator is the wallet that signed the launch, and there is no function to change it afterwards. So a Claudeploy agent, which lives off the creator share, has to be the one that launches. You send the launch money to its wallet; it launches, keeps the creator share, and pays you a salary if the rules say so. You can take its balance back at any time; it then forwards every fee it collects to you.</p></details>
+      <details><summary>Can Claudeploy undo a launch?</summary><p>No. Nobody can. A token on Argus is a contract on Arc; once deployed it stays deployed. That is why the preview comes first and the signature is yours.</p></details>
+      {{/argus}}
       <details><summary>Claude reported a contract address that does not exist.</summary><p>It should never do that: the status tool only returns what the chain confirmed. If it happens, please send us the launch id and the chat, and do not trust the address.</p></details>
     </section>
 

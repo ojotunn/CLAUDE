@@ -1,37 +1,74 @@
 # Claudeploy
 
-Lança token na pons (Robinhood Chain, pons v2) conversando com o Claude. É o
-equivalente do Brdy (ChatGPT) do lado do Claude: um **conector MCP** que o
-usuário adiciona no claude.ai, mais um site com página de assinatura onde a
-carteira dele assina. Projeto independente, sem nada do Blizzard.
+Lança token conversando com o Claude, em dois venues: **pons v2** (Robinhood
+Chain) e **Argus** (Arc, a chain da Circle). É o equivalente do Brdy (ChatGPT)
+do lado do Claude: um **conector MCP** que o usuário adiciona no claude.ai,
+mais um site com página de assinatura onde a carteira dele assina. Projeto
+independente, sem nada do Blizzard.
 
 Repositório: https://github.com/ojotunn/CLAUDE
+
+## Um código, dois deploys
+
+`VENUE=pons` (padrão) ou `VENUE=argus`. Cada processo serve um venue só, com o
+seu `DATA_DIR`. O que muda de um para o outro mora em `src/venues/pons.js` e
+`src/venues/argus.js`; `src/chain.js` carrega um deles e o resto do código
+(`launches.js`, `agent.js`, `mcp.js`, `server.js`, páginas) é comum. As páginas
+HTML têm blocos `{{#pons}}…{{/pons}}` / `{{#argus}}…{{/argus}}` e variáveis
+`{{CHAVE}}` que o servidor resolve.
+
+| | pons v2 | Argus |
+|---|---|---|
+| chain | Robinhood Chain (4663), gás ETH | Arc (5042), gás **USDC** |
+| mercado | bonding curve → Uniswap v4 na graduação | pool Uniswap v4 desde o primeiro trade; trava a liquidez a US$ 45k |
+| lançamento | factory / launch-and-buy router, taxa da pons em ETH | portal da Argus; sem taxa de lançamento; taxa de compra/venda fixa (0–10% cada, ≥1 > 0) repartida entre criador, queima e liquidez |
+| dev buy | na mesma tx (router), teto 5% do supply | na mesma tx (portal), `approve` de USDC antes, teto 5% |
+| compra | `buy` na curva | Universal Router (V4_SWAP) + Permit2 (2 aprovações únicas, depois 1 assinatura) |
+| agente | handover das creator fees (`transferCreatorFeeRecipient`) | **o agente lança o token** (criador não pode ser trocado na Argus); o dono manda USDC pra carteira dele |
 
 ## Como funciona
 
 1. O usuário descreve o token no Claude. O Claude chama `preview_launch`, que
    simula o lançamento na chain (eth_call com state override) e devolve os
-   termos: supply, taxa da pons, dev buy e fatia do supply, custo total.
+   termos: supply, taxa, dev buy e fatia do supply, custo total.
 2. Com o "ok" do usuário, o Claude chama `prepare_launch`. O servidor guarda o
    pedido e devolve um link `/l/<id>`.
 3. Na página, o usuário conecta a carteira (MetaMask, Rabby, Phantom EVM...).
    O servidor simula de novo **a partir dessa carteira**, mostra o endereço
-   exato do token que vai nascer, estima gás e confere saldo.
-4. A carteira assina uma transação. Com dev buy, vai pelo **launch-and-buy
-   router** da pons (lançamento + compra na mesma transação, sem janela para
-   sniper). Sem dev buy, vai direto na factory.
-5. O servidor espera o recibo, lê o evento `TokenLaunched` e o `launch_status`
-   passa a devolver o CA para o chat.
+   exato do token que vai nascer, estima gás e confere saldo. Na Argus, se há
+   dev buy, a página pede primeiro o `approve` de USDC e depois o `launch`.
+4. A carteira assina. O servidor espera o recibo, lê o evento `TokenLaunched`
+   e o `launch_status` passa a devolver o CA para o chat.
 
-Nenhuma chave passa pelo servidor. Ele só monta calldata e assiste.
+Nenhuma chave do usuário passa pelo servidor. As únicas chaves aqui são as das
+carteiras dos agentes, cifradas com `AGENT_SECRET`.
 
-## Site
+## O que a Argus é (lido da chain, 16/09/2026)
 
-Tudo en-US, em `public/`: home (`/`), `/how`, `/tokens` (feed ao vivo com
-preço, ETH captado e progresso de graduação), `/docs`, `/support`, `/privacy`,
-`/terms` e a página de assinatura `/l/<id>`. Cabeçalho, rodapé e os dados vivos
-(taxa, supply, endereços) vêm de `site.js` + `/api/terms`. Paleta quente
-alinhada ao Claude: creme, quase-preto, terracota, títulos em serifa.
+O fonte da Argus não está verificado e a doc do site fica atrás de um captcha,
+então tudo em `src/venues/argus.js` foi reconstruído a partir do bytecode, do
+storage e de transações reais, e conferido contra lançamentos reais:
+
+- `portal.launch(params, meta, tokenSalt, hookSalt)` (seletor `0x11b8f0f1`).
+  Struct: nome, ticker, supply (1e27), mcap inicial (US$ 2.500), mcap de bond
+  (US$ 45.000), taxa compra, taxa venda, split (criador, queima, holders,
+  liquidez), dev buy (USDC 6 casas), quote (USDC `0x3600…`), modo (1).
+- token = CREATE2(portal, keccak(abi.encode(criador, tokenSalt)), clone EIP-1167
+  do `tokenImpl`); splitter = `portal.predictSplitter(criador, tokenSalt)`.
+- o hook é criado por CREATE2 com o creation code guardado num contrato-cofre
+  (slot 4 do portal, começa com `0x00`), args (poolManager, portal, splitter,
+  treasury, USDC, 10000, 200, buyTax, sellTax), salt keccak(abi.encode(criador,
+  hookSalt)), e o endereço **precisa** terminar nos bits `0x2044`: o cliente
+  minera o `hookSalt` (~250 ms aqui).
+- dev buy = swap numa faixa única (TickMath portado em BigInt; 1% de fee no
+  input, taxa de compra sobre a saída), batendo com os eventos `DevBuy` reais.
+- fatia para holders (dividendos em USDC): o token só cria o tracker se
+  `launchConfig.configFor(criador).rewardMode > 0`, cadastrado pela Argus
+  (só a ubi.fun em 16/09). Carteira comum → erro claro antes de simular.
+- fees do criador: `splitter.distribute()` (qualquer um) e
+  `splitter.claim(criador)`; não há função para trocar o criador.
+- state override funciona na RPC pública: saldo nativo, `allowance` do USDC
+  (slot 10 do proxy) e `allowance` do Permit2 (slot 1).
 
 ## Rodar local
 
@@ -41,9 +78,8 @@ copy .env.example .env
 npm start
 ```
 
-Ou `START-Windows.bat`. Sobe em `http://localhost:8436`. O endpoint do conector
-é `http://localhost:8436/mcp`, mas o claude.ai precisa de uma URL pública
-(HTTPS), então local serve para ver o site e testar com o cliente MCP.
+Ou `START-Windows.bat`. Sobe em `http://localhost:8436`. Para a Argus:
+`VENUE=argus` no `.env` (e outro `DATA_DIR`).
 
 ## Testes
 
@@ -51,59 +87,50 @@ Ou `START-Windows.bat`. Sobe em `http://localhost:8436`. O endpoint do conector
 npm test
 ```
 
-Sobe o servidor de verdade numa porta livre, conecta um cliente MCP e exercita
-o caminho inteiro contra a mainnet (só leitura e simulação, nada assinado):
-handshake, termos, prévia com e sem dev buy, clamp do teto de 5%, preparação,
-página de assinatura, bind de carteira com endereço previsto, status, token
-info, compra na curva, e todas as páginas do site.
+Duas suítes, cada uma sobe o servidor de verdade numa porta livre, conecta um
+cliente MCP e exercita o caminho inteiro contra a mainnet (só leitura e
+simulação, nada assinado): `test/e2e.test.js` (pons, 24 provas) e
+`test/argus.e2e.test.js` (Argus, 16 provas: termos, cotação com taxas e split,
+clamp, erros, bind com endereço previsto e passo de approve, token info nos
+dois lados da pool, compra pelo Universal Router com Permit2, lançamento pelo
+agente, páginas, observador, matemática do Uniswap contra valores da chain).
 
 ## Conectar no Claude
 
 Customize → Connectors → Add custom connector → colar `https://<dominio>/mcp`.
 Funciona no Free (um conector), Pro e Max. No Team/Enterprise só o owner
-adiciona. Para aparecer no diretório oficial precisa de organização
-Team/Enterprise e passar pela revisão.
+adiciona.
 
 ## Deploy (Railway)
 
 - Dockerfile pronto; `railway.toml` com healthcheck em `/api/health`.
-- Variáveis: `PUBLIC_URL=https://<dominio>` (sem barra no fim), `DATA_DIR=/app/data`
-  e um volume montado em `/app/data`. Sem volume os lançamentos somem no redeploy.
-- Opcionais: `LINK_X`, `LINK_TELEGRAM`, `SUPPORT_EMAIL` (rodapé e suporte).
-- `PORT` o Railway injeta.
+- Um serviço por venue. Variáveis: `VENUE`, `PUBLIC_URL=https://<dominio>` (sem
+  barra no fim), `DATA_DIR=/app/data` e um volume montado em `/app/data`.
+- Agentes: `AGENT_SECRET` (nunca trocar), `TREASURY_ADDRESS`, `ANTHROPIC_API_KEY`.
+- Opcionais: `LINK_X`, `LINK_TELEGRAM`, `SUPPORT_EMAIL`, `OTHER_VENUE_URL`,
+  `OFFICIAL_TOKEN`, `CANONICAL_HOST`.
 
 ## Ferramentas do conector
 
 | tool | o que faz |
 |---|---|
-| `launch_terms` | taxa, supply, teto de creator tax, se está aberto a todos |
+| `launch_terms` | termos do venue (taxa, supply, teto de tax, contratos) |
 | `preview_launch` | simula e devolve termos + custo (não guarda nada) |
-| `prepare_launch` | guarda e devolve o link de assinatura |
+| `prepare_launch` | guarda e devolve o link de assinatura (Argus: `withAgent` cria o agente e devolve o link de financiamento) |
 | `launch_status` | estado por id; devolve o CA quando `live` |
-| `token_info` | preço, ETH captado, progresso de graduação de qualquer token pons v2 |
-| `prepare_buy` | link para comprar na curva de um token já lançado |
+| `token_info` | preço, mcap, progresso (graduação na pons, bond na Argus) |
+| `prepare_buy` | link para comprar (curva na pons; pool v4 na Argus) |
 | `recent_launches` | últimos lançamentos feitos pelo Claudeploy |
-
-## Regras embutidas
-
-- Dev buy limitada a `MAX_DEV_BUY_BPS` do supply (padrão 5%); acima disso o
-  servidor reduz por busca binária e avisa.
-- `expectedEconomics` pinado: se a pons mudar os termos entre a prévia e a
-  assinatura, a transação reverte em vez de repreçar.
-- Slippage: 1% no dev buy (curva nasce na mesma transação), 3% na compra avulsa.
-- Link expira em `LAUNCH_TTL_HOURS` (24h).
-- `canLaunch(wallet)` é checado: a pons pode ligar whitelist a qualquer momento.
+| `attach_agent` | pons: agente para token existente (handover). Argus: explica que o agente lança |
+| `set_agent_rules`, `agent_status`, `ask_agent`, `release_agent` | regras, estado, pergunta, saída do agente |
 
 ## Limitações conhecidas
 
-- Só par nativo (ETH). Lançamentos pareados com ERC-20 não são oferecidos.
-- Compra só na bonding curve. Depois da graduação (Uniswap v4) o `prepare_buy`
-  recusa.
+- Argus: fatia para holders só para lançadores cadastrados pela Argus.
+- Argus: `explorer.arc.io` falha no curl do Windows por revogação de
+  certificado, mas abre no navegador; a doc `argus.world/docs` está atrás de
+  um Turnstile (não automatizável).
 - Página de assinatura exige carteira injetada no navegador (ou o navegador
   interno da carteira no celular). Não há WalletConnect.
-- A URL da página do token na pons (`PONS_TOKEN_URL`) foi verificada com
-  `/launchpad/<endereço>`; se a pons mudar, é uma variável.
-- Testnet: `PONS_NETWORK=testnet` troca chain e RPC, mas a pons não publica os
-  endereços dos contratos lá; precisam vir por env.
-- A assinatura real ainda não foi exercitada (precisa de carteira com ETH na
-  Robinhood Chain).
+- O ciclo real do agente com dinheiro (pons e Argus) ainda não foi exercitado
+  com saldo de verdade.

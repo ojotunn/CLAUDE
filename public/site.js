@@ -19,35 +19,47 @@
       <div class="links">
         ${LINKS.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}
         <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
-        <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">pons docs</a>
+        <span id="footVenue"></span>
         <span id="footSocial"></span>
       </div>
     </div>
-    <div class="fine">Claudeploy is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; Claudeploy is not affiliated with Anthropic or with pons.</div>
+    <div class="fine" id="footFine">Claudeploy is a connector for Claude. It builds and simulates transactions; your wallet signs them. It does not custody assets, does not hold keys, and does not give financial advice. Tokens launched here are created by their deployers. Claude is a trademark of Anthropic; Claudeploy is not affiliated with Anthropic.</div>
   </div>`;
 
   // Dados vivos: elementos com data-fill="chave" recebem o valor de /api/terms.
   window.siteTerms = fetch('/api/terms').then((r) => r.json()).then((t) => {
     const cap = `${(t.devBuyCapBps / 100).toFixed(0)}%`;
+    const c = t.contracts || {};
     const values = {
       mcpUrl: `${location.origin}/mcp`,
       host: location.host,
-      fee: t.launchFeeEth,
+      fee: t.launchFee,
+      feeUnit: `${t.launchFee} ${t.unit}`,
+      unit: t.unit,
+      venue: t.venue?.name,
+      market: t.venue?.market,
       supply: Number(t.supply).toLocaleString('en-US'),
       cap,
-      grad: t.graduatesAtEth,
+      grad: t.graduatesAt,
+      gradValue: t.graduatesAtValue,
+      opens: t.opensAt || '',
       network: `${t.chain.name}${t.chain.isTestnet ? ' (testnet)' : ''}`,
       chainId: String(t.chain.id),
       rpc: t.chain.rpc,
       explorer: t.chain.explorer,
-      factory: t.contracts.factory,
-      router: t.contracts.router,
-      maxTax: `${t.maxCreatorTaxBps / 100}%`,
-      open: t.launchEnabled ? 'open to any wallet' : 'whitelisted wallets only',
+      factory: c.factory || c.portal || '',
+      router: c.router || c.universalRouter || '',
+      portal: c.portal || '',
+      poolManager: c.poolManager || '',
+      permit2: c.permit2 || '',
+      usdc: c.usdc || '',
+      maxTax: t.maxCreatorTax,
+      open: t.launchesOpenToEveryone ? 'open to any wallet' : 'whitelisted wallets only',
+      tokensOnVenue: t.tokensLaunchedOnArgus != null ? Number(t.tokensLaunchedOnArgus).toLocaleString('en-US') : '',
     };
     document.querySelectorAll('[data-fill]').forEach((el) => {
       const v = values[el.dataset.fill];
-      if (v != null) el.textContent = v;
+      if (v != null && v !== '') el.textContent = v;
     });
     // topo: X e o token oficial, ao lado do botao
     const extra = document.getElementById('navExtra');
@@ -56,7 +68,7 @@
       const parts = [];
       if (t.officialToken) {
         const a = t.officialToken.address;
-        parts.push(`<a class="navtoken" href="${esc(t.officialToken.pons)}" target="_blank" rel="noopener" title="${esc(a)}">$${esc(t.officialToken.symbol)} <span class="mono">${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</span></a><button class="navcopy" data-copy="${esc(a)}" title="Copy contract address">copy</button>`);
+        parts.push(`<a class="navtoken" href="${esc(t.officialToken.venue || t.officialToken.pons)}" target="_blank" rel="noopener" title="${esc(a)}">$${esc(t.officialToken.symbol)} <span class="mono">${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</span></a><button class="navcopy" data-copy="${esc(a)}" title="Copy contract address">copy</button>`);
       }
       if (t.links?.x) parts.push(`<a class="navx" href="${esc(t.links.x)}" target="_blank" rel="noopener" aria-label="X">${X_ICON}</a>`);
       extra.innerHTML = parts.join('');
@@ -69,6 +81,13 @@
         l.email && `<a href="mailto:${esc(l.email)}">Email</a>`,
         t.repo && `<a href="${esc(t.repo)}" target="_blank" rel="noopener">Source</a>`].filter(Boolean).join(' ');
     }
+    const fv = document.getElementById('footVenue');
+    if (fv && t.venue) {
+      fv.innerHTML = [`<a href="${esc(t.venue.docs)}" target="_blank" rel="noopener">${esc(t.venue.name)} docs</a>`,
+        t.venue.otherVenueUrl && `<a href="${esc(t.venue.otherVenueUrl)}">Claudeploy on ${esc(t.venue.id === 'argus' ? 'pons' : 'Argus')}</a>`].filter(Boolean).join(' ');
+    }
+    const fine = document.getElementById('footFine');
+    if (fine && t.venue) fine.textContent += ` Claudeploy is not affiliated with ${t.venue.name}.`;
     return t;
   }).catch(() => null);
 

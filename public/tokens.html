@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tokens · Claudeploy</title>
-  <meta name="description" content="Every token launched through Claudeploy, with live price, ETH raised and graduation progress from pons.">
+  <meta name="description" content="Every token launched through Claudeploy on {{VENUE_NAME}}, with live price, market cap and progress from the chain.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,21 +18,22 @@
     <section class="hero" style="padding-bottom:24px">
       <div class="kicker"><i></i> Tokens</div>
       <h1 style="font-size:clamp(34px,5vw,54px)">Launched through Claudeploy.</h1>
-      <p class="lead">Live from pons on <span data-fill="network">Robinhood Chain</span>. Price, ETH raised and progress toward graduation, refreshed every minute.</p>
+      <p class="lead">Live from {{VENUE_NAME}} on {{CHAIN_NAME}}. {{#pons}}Price, ETH raised and progress toward graduation{{/pons}}{{#argus}}Price in USD, market cap and progress toward the $45,000 bond{{/argus}}, refreshed every minute.</p>
     </section>
 
     <section class="section tight">
       <div class="stats" id="stats">
         <div class="stat"><div class="v" id="sCount">…</div><div class="k">tokens launched</div></div>
-        <div class="stat"><div class="v" id="sMcap">…</div><div class="k">combined market cap (ETH)</div></div>
-        <div class="stat"><div class="v" id="sRaised">…</div><div class="k">ETH raised on curves</div></div>
-        <div class="stat"><div class="v" id="sGrad">…</div><div class="k">graduated to Uniswap v4</div></div>
+        <div class="stat"><div class="v" id="sMcap">…</div><div class="k">combined market cap ({{#pons}}ETH{{/pons}}{{#argus}}USD{{/argus}})</div></div>
+        {{#pons}}<div class="stat"><div class="v" id="sRaised">…</div><div class="k">ETH raised on curves</div></div>{{/pons}}
+        {{#argus}}<div class="stat"><div class="v" id="sAgents">…</div><div class="k">run by an agent</div></div>{{/argus}}
+        <div class="stat"><div class="v" id="sGrad">…</div><div class="k">{{#pons}}graduated to Uniswap v4{{/pons}}{{#argus}}bonded (liquidity locked){{/argus}}</div></div>
       </div>
     </section>
 
     <section class="section tight">
       <div id="list"><div class="empty">Loading…</div></div>
-      <p class="small muted" style="margin-top:14px">Data comes from the pons v2 factory and bonding curves. Claudeploy lists what was launched through it; it does not curate, endorse or rate tokens.</p>
+      <p class="small muted" style="margin-top:14px">Data comes from the {{VENUE_NAME}} contracts on {{CHAIN_NAME}}. Claudeploy lists what was launched through it; it does not curate, endorse or rate tokens.</p>
     </section>
   </main>
   <footer id="footer"></footer>
@@ -43,24 +44,30 @@
       const list = document.getElementById('list');
       const fmt = (n, d = 4) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
       const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+      const argus = '{{VENUE}}' === 'argus';
       try {
         const { tokens, totals } = await fetch('/api/tokens').then((r) => r.json());
         document.getElementById('sCount').textContent = totals.count;
-        document.getElementById('sMcap').textContent = fmt(totals.marketCapEth, 2);
-        document.getElementById('sRaised').textContent = fmt(totals.raisedEth, 3);
+        document.getElementById('sMcap').textContent = argus ? '$' + fmt(totals.marketCap, 0) : fmt(totals.marketCap, 2);
+        const r = document.getElementById('sRaised'); if (r) r.textContent = fmt(totals.raised, 3);
+        const ag = document.getElementById('sAgents'); if (ag) ag.textContent = tokens.filter((t) => t.agent?.status === 'active').length;
         document.getElementById('sGrad').textContent = totals.graduated;
         if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Claudeploy to Claude and be the first.</div>'; return; }
-        list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr><th>Token</th><th>Price (ETH)</th><th>Market cap (ETH)</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th></tr></thead><tbody>' +
+        const head = argus
+          ? '<th>Token</th><th>Price (USD)</th><th>Market cap</th><th>Tax</th><th>Bond</th><th>Creator</th><th>Launched</th>'
+          : '<th>Token</th><th>Price (ETH)</th><th>Market cap (ETH)</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th>';
+        list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr>' + head + '</tr></thead><tbody>' +
           tokens.map((t) => {
-            const prog = t.info?.graduationProgress ?? 0;
-            const phase = t.info?.graduated ? 'graduated' : `${fmt(prog, 1)}%`;
-            return `<tr>
-              <td><a href="${esc(t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span>${t.agent?.status === 'active' ? ` <a href="/t/${esc(t.token)}" style="font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft)">agent</a>` : ''}<div class="addr small muted">${short(t.token)}</div></td>
-              <td class="mono">${t.info ? fmt(t.info.priceEth, 10) : '—'}</td>
-              <td class="mono">${t.info ? fmt(t.info.marketCapEth, 3) : '—'}</td>
-              <td class="mono">${t.info ? fmt(t.info.raisedEth, 4) : '—'} / ${t.info ? fmt(t.info.graduationThresholdEth, 1) : '—'}</td>
+            const i = t.info;
+            const prog = i?.graduationProgress ?? 0;
+            const phase = i?.graduated ? (argus ? 'bonded' : 'graduated') : `${fmt(prog, 1)}%`;
+            const nameCell = `<td><a href="${esc(t.links.venue || t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span>${t.agent?.status === 'active' ? ` <a href="/t/${esc(t.token)}" style="font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft)">agent</a>` : ''}<div class="addr small muted">${short(t.token)}</div></td>`;
+            const mid = argus
+              ? `<td class="mono">${i ? '$' + fmt(i.price, 8) : '—'}</td><td class="mono">${i ? '$' + fmt(i.marketCap, 0) : '—'}</td><td class="small">${i ? `${i.buyTaxBps / 100}% / ${i.sellTaxBps / 100}%` : '—'}</td>`
+              : `<td class="mono">${i ? fmt(i.price, 10) : '—'}</td><td class="mono">${i ? fmt(i.marketCap, 3) : '—'}</td><td class="mono">${i ? fmt(i.raised, 4) : '—'} / ${i ? fmt(i.graduatesAt, 1) : '—'}</td>`;
+            return `<tr>${nameCell}${mid}
               <td><div class="bar"><i style="width:${Math.min(100, prog)}%"></i></div><div class="small muted">${phase}</div></td>
-              <td class="addr">${short(t.deployer)}</td>
+              <td class="addr">${short(t.deployer)}${t.byAgent ? ' <span class="small muted">(agent)</span>' : ''}</td>
               <td class="muted small">${new Date(t.confirmedAt).toLocaleDateString('en-US')}</td>
             </tr>`;
           }).join('') + '</tbody></table></div>';

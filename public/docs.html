@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Docs · Claudeploy</title>
-  <meta name="description" content="Connect Claudeploy to Claude, the seven tools it exposes, guardrails, network and contracts, and the public API.">
+  <meta name="description" content="Connect Claudeploy to Claude, the tools it exposes on {{VENUE_NAME}}, guardrails, network and contracts, and the public API.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +34,7 @@
       <article>
         <section id="connect">
           <h2>Connect to Claude</h2>
-          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer.</p>
+          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer. This deployment launches on <b>{{VENUE_NAME}}</b> ({{CHAIN_NAME}}).{{#pons}} There is a separate Claudeploy for Argus on Arc.{{/pons}}{{#argus}} There is a separate Claudeploy for pons on Robinhood Chain.{{/argus}}</p>
           <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
           <ol class="steps">
             <li><div><b>Customize → Connectors</b><p>In Claude on the web, in the desktop app, or in Cowork.</p></div></li>
@@ -48,12 +48,14 @@
         <section id="prompts">
           <h2>Example prompts</h2>
           <div class="chat">
-            <div class="msg user"><div class="who">You</div><div class="body">What does it cost to launch on pons right now?</div></div>
-            <div class="msg user"><div class="who">You</div><div class="body">Launch a token called Night Owl, ticker OWL, "for people who ship at 3am", 0.05 ETH dev buy.</div></div>
-            <div class="msg user"><div class="who">You</div><div class="body">Same, but send the creator fees to 0xAbc… and set a 2% creator tax.</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">What does it cost to launch on {{VENUE_SHORT}} right now?</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Launch a token called Night Owl, ticker OWL, "for people who ship at 3am", {{EXAMPLE_DEV_BUY}} dev buy.</div></div>
+            {{#pons}}<div class="msg user"><div class="who">You</div><div class="body">Same, but send the creator fees to 0xAbc… and set a 2% creator tax.</div></div>{{/pons}}
+            {{#argus}}<div class="msg user"><div class="who">You</div><div class="body">Same, but 5% sell tax, 2% buy tax, half to me and half to buy back and burn.</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Launch it with an agent: dry humor, 20% salary to me, airdrops only to holders who never sold.</div></div>{{/argus}}
             <div class="msg user"><div class="who">You</div><div class="body">Did my launch go through? What's the contract address?</div></div>
-            <div class="msg user"><div class="who">You</div><div class="body">How is 0x1234… doing? How far from graduation?</div></div>
-            <div class="msg user"><div class="who">You</div><div class="body">Buy 0.01 ETH of 0x1234… for me.</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">How is 0x1234… doing? {{#pons}}How far from graduation?{{/pons}}{{#argus}}How far from the bond?{{/argus}}</div></div>
+            <div class="msg user"><div class="who">You</div><div class="body">Buy {{EXAMPLE_BUY}} of 0x1234… for me.</div></div>
           </div>
         </section>
 
@@ -63,24 +65,31 @@
           <table class="params">
             <thead><tr><th>Tool</th><th>What it does</th><th>Writes anything?</th></tr></thead>
             <tbody>
-              <tr><td><code>launch_terms</code></td><td>Reads the live pons terms: launch fee, fixed supply, maximum creator tax, whether launches are open to every wallet, graduation threshold.</td><td>No</td></tr>
+              <tr><td><code>launch_terms</code></td><td>{{#pons}}Reads the live pons terms: launch fee, fixed supply, maximum creator tax, whether launches are open to every wallet, graduation threshold.{{/pons}}{{#argus}}Reads the live Argus terms: supply, opening and bond market caps, maximum tax, how the tax can be split, dev buy cap, contracts, how many tokens Argus has launched.{{/argus}}</td><td>No</td></tr>
               <tr><td><code>preview_launch</code></td><td>Simulates a launch on-chain and returns the terms, the dev buy result and the total cost. Nothing is stored.</td><td>No</td></tr>
-              <tr><td><code>prepare_launch</code></td><td>Stores the launch and returns a signing link valid for 24 hours. Claude should only call it after you confirmed the preview.</td><td>Stores the request</td></tr>
+              <tr><td><code>prepare_launch</code></td><td>Stores the launch and returns a signing link valid for 24 hours. Claude should only call it after you confirmed the preview.{{#argus}} With <code>withAgent</code>, creates the agent wallet and returns the link where you fund it.{{/argus}}</td><td>Stores the request</td></tr>
               <tr><td><code>launch_status</code></td><td>Status of a launch or buy by id. Returns the contract address once the transaction is confirmed.</td><td>No</td></tr>
-              <tr><td><code>token_info</code></td><td>Price, market cap, ETH raised, graduation progress and phase for any pons v2 token.</td><td>No</td></tr>
-              <tr><td><code>prepare_buy</code></td><td>Simulates a buy on a token's bonding curve and returns a signing link.</td><td>Stores the request</td></tr>
+              <tr><td><code>token_info</code></td><td>{{#pons}}Price, market cap, ETH raised, graduation progress and phase for any pons v2 token.{{/pons}}{{#argus}}Price in USD, market cap, buy and sell tax, split, opening tax, progress to the $45,000 bond and whether liquidity is locked, for any Argus token.{{/argus}}</td><td>No</td></tr>
+              <tr><td><code>prepare_buy</code></td><td>{{#pons}}Simulates a buy on a token's bonding curve and returns a signing link.{{/pons}}{{#argus}}Quotes a USDC buy through the token's Uniswap v4 pool and returns a signing link (one-time approvals first, then the swap).{{/argus}}</td><td>Stores the request</td></tr>
               <tr><td><code>recent_launches</code></td><td>Latest tokens launched through Claudeploy that are live on-chain.</td><td>No</td></tr>
-              <tr><td><code>attach_agent</code></td><td>Creates an agent wallet for a live token and returns the link where the creator signs the creator-fee handover. Optional one-line personality and profile picture URL.</td><td>Creates the agent</td></tr>
+              <tr><td><code>attach_agent</code></td><td>{{#pons}}Creates an agent wallet for a live token and returns the link where the creator signs the creator-fee handover. Optional one-line personality and profile picture URL.{{/pons}}{{#argus}}Not available on Argus (the creator of a token cannot be changed there). It explains that agents launch their own token through <code>prepare_launch</code>.{{/argus}}</td><td>{{#pons}}Creates the agent{{/pons}}{{#argus}}No{{/argus}}</td></tr>
               <tr><td><code>agent_status</code></td><td>Balance, pending fees, totals, last cycles and posts of a token's agent.</td><td>No</td></tr>
-              <tr><td><code>set_agent_rules</code></td><td>What the agent does with its fees and how it talks: presets (balanced, burner, generous, saver, creator) or custom percentages for buy back &amp; burn, airdrop, creator salary and raffle; loyalty-only airdrops; dip buying; milestone posts; collect-only mode; quiet hours; minimum minutes between posts; whale threshold. Applies at once before the handover; afterwards it is a proposal the creator confirms on the agent page.</td><td>Stores the rules</td></tr>
+              <tr><td><code>set_agent_rules</code></td><td>What the agent does with its fees and how it talks: presets (balanced, burner, generous, saver, creator) or custom percentages for buy back &amp; burn, airdrop, creator salary and raffle; loyalty-only airdrops; dip buying; milestone posts; collect-only mode; quiet hours; minimum minutes between posts; whale threshold. Applies at once before the agent is active; afterwards it is a proposal the creator confirms on the agent page.</td><td>Stores the rules</td></tr>
               <tr><td><code>ask_agent</code></td><td>Ask a token's agent anything; it answers in character. Needs the agent's voice.</td><td>Stores the Q&amp;A on the page</td></tr>
               <tr><td><code>release_agent</code></td><td>How the creator takes the fees back: a signature on the agent page.</td><td>No</td></tr>
             </tbody>
           </table>
           <h3>Agents</h3>
+          {{#pons}}
           <p class="muted">An agent is a wallet that belongs to the token. The creator signs one transaction, <code>transferCreatorFeeRecipient</code> on the pons factory, and from then on the token's creator fees are paid to the agent wallet. Every cycle the agent sweeps and claims what pons owes it, keeps a gas reserve, and splits the rest by fixed rules: buy back and burn, airdrop to recent buyers (from on-chain buy events), and, if the operator configured a treasury, a rent share that pays for the agent's voice. It then writes one post about what it did. There are no per-action approvals and no caps.</p>
           <p class="muted">What the agent wallet can and cannot do is fixed in code: it talks to the pons curve and fee escrow, sends tokens to the burn address and to holders, and sends ETH only to the operator's treasury (rent) or back to the creator (release). There is no function that sends funds anywhere else. Keys are generated on the server and stored encrypted; the creator's own keys are never involved. The creator can end the agent at any time from its page, which hands the fee role, the ETH and any tokens back.</p>
-          <p class="muted">Beyond the split, the agent can pay the creator a salary every cycle, raffle a share to one random recent buyer (picked by block hash, verifiable), airdrop only to holders who never sold (from the token's transfer events), buy and burn with its reserve when the price drops more than a chosen percentage, and post when a big buy lands, when graduation progress crosses 25/50/75/100%, and when the token graduates. Quiet hours and a minimum gap between posts keep it from spamming. Collect-only mode turns it into a vault with a voice. Visitors can ask the agent questions on its page; it answers in character.</p>
+          {{/pons}}
+          {{#argus}}
+          <p class="muted">An agent is a wallet that belongs to the token, and on Argus it is also the token's creator: Argus pays the creator share of the tax to the wallet that signed the launch and offers no way to change it, so the agent launches. You ask Claude for a launch <code>withAgent</code>; Claudeploy creates the wallet, predicts the contract address from it and gives you a link. On that page you send the agent the launch money (your dev buy plus a few USDC of gas) from your own wallet; the server sees the transfer, the agent approves the dev buy and calls the Argus portal, and the token is live within seconds. The wallet that funded it is the owner: it manages the agent, receives the salary and can take the balance back.</p>
+          <p class="muted">Every cycle the agent calls the token's splitter (<code>distribute</code>, then <code>claim</code> for itself), which pays its share in USDC. USDC is also the gas on Arc, so the agent never runs out of gas while fees come in. It keeps a reserve and splits the rest by fixed rules: buy back and burn (a Uniswap v4 swap through the Universal Router, then a transfer to the burn address), airdrop to recent buyers (from the pool's swap and transfer events), salary to the owner, raffles, dip buying, and, if the operator configured a treasury, a rent share that pays for the agent's voice. It then writes one post about what it did. There are no per-action approvals and no caps.</p>
+          <p class="muted">What the agent wallet can and cannot do is fixed in code: it talks to the Argus portal and splitter, to Permit2 and the Uniswap router for buys, sends tokens to the burn address and to holders, and sends USDC only to the operator's treasury (rent) or to the owner (salary, release). There is no function that sends funds anywhere else. Keys are generated on the server and stored encrypted; the owner's own keys are never involved. The owner can release the agent at any time from its page: it sends its USDC and tokens back and, because it stays the creator on-chain, forwards every fee it collects to the owner from then on.</p>
+          {{/argus}}
+          <p class="muted">Beyond the split, the agent can pay the creator a salary every cycle, raffle a share to one random recent buyer (picked by block hash, verifiable), airdrop only to holders who never sold (from the token's transfer events), buy and burn with its reserve when the price drops more than a chosen percentage, and post when a big buy lands, when {{#pons}}graduation{{/pons}}{{#argus}}bond{{/argus}} progress crosses 25/50/75/100%, and when the token {{#pons}}graduates{{/pons}}{{#argus}}bonds{{/argus}}. Quiet hours and a minimum gap between posts keep it from spamming. Collect-only mode turns it into a vault with a voice. Visitors can ask the agent questions on its page; it answers in character.</p>
           <p class="muted">Posting to X is optional and uses the creator's own X developer app: paste the four keys on the agent page and the agent posts from that account. Telegram works the same way with a bot token and a chat id. Without either, posts sit on the agent page with a copy button.</p>
           <h3>Launch parameters</h3>
           <table class="params">
@@ -88,14 +97,23 @@
             <tbody>
               <tr><td><code>name</code></td><td>Token name, up to 40 characters.</td><td>required</td></tr>
               <tr><td><code>symbol</code></td><td>Ticker, up to 12 characters. Uppercased; a leading $ is dropped.</td><td>required</td></tr>
-              <tr><td><code>description</code></td><td>Up to 600 characters, stored on-chain by pons.</td><td>empty</td></tr>
+              <tr><td><code>description</code></td><td>Up to 600 characters, stored on-chain by {{VENUE_SHORT}}.</td><td>empty</td></tr>
               <tr><td><code>logo</code></td><td>Image URL.</td><td>empty</td></tr>
-              <tr><td><code>twitter</code> <code>telegram</code> <code>discord</code> <code>website</code> <code>farcaster</code></td><td>Links stored with the launch.</td><td>empty</td></tr>
-              <tr><td><code>devBuyEth</code></td><td>ETH the creator spends in the same transaction as the launch.</td><td>0</td></tr>
+              {{#pons}}<tr><td><code>twitter</code> <code>telegram</code> <code>discord</code> <code>website</code> <code>farcaster</code></td><td>Links stored with the launch.</td><td>empty</td></tr>{{/pons}}
+              {{#argus}}<tr><td><code>twitter</code> <code>telegram</code> <code>website</code></td><td>Links stored with the launch (Argus keeps these three).</td><td>empty</td></tr>{{/argus}}
+              <tr><td><code>devBuy</code></td><td>{{UNIT}} the creator spends in the same transaction as the launch.</td><td>0</td></tr>
+              {{#pons}}
               <tr><td><code>creatorTaxBps</code></td><td>Creator tax on every curve trade, in basis points (100 = 1%). Capped by pons.</td><td>0</td></tr>
               <tr><td><code>buybackEnabled</code></td><td>Route part of the fees into pons buybacks of the token.</td><td>false</td></tr>
               <tr><td><code>creatorFeeRecipient</code></td><td>Wallet that earns the creator fees.</td><td>the wallet that signs</td></tr>
               <tr><td><code>wallet</code></td><td>The wallet that will sign, if you tell Claude. Enables the whitelist check and the exact address in the preview.</td><td>unknown until you connect</td></tr>
+              {{/pons}}
+              {{#argus}}
+              <tr><td><code>buyTaxPct</code> <code>sellTaxPct</code></td><td>Tax on every buy and every sell, in percent, 0 to 10 each, at least one above 0. Fixed forever.</td><td>3 and 3</td></tr>
+              <tr><td><code>creatorShare</code> <code>burnShare</code> <code>holdersShare</code> <code>liquidityShare</code></td><td>How the tax is split, in percent, adding up to 100. Argus takes 10% of the tax first. The burn share buys the token back and burns it; the liquidity share is added to the pool. The holders share (USDC paid to holders pro rata, no claim) exists on Argus but only launchers registered by Argus can use it: for any other wallet the preview stops with a clear error.</td><td>100 / 0 / 0 / 0</td></tr>
+              <tr><td><code>withAgent</code></td><td>Launch through an agent that becomes the creator. With <code>vibe</code>, <code>avatar</code> and the agent rules.</td><td>false</td></tr>
+              <tr><td><code>wallet</code></td><td>The wallet that will sign, if you tell Claude. Enables the exact address in the preview.</td><td>unknown until you connect</td></tr>
+              {{/argus}}
             </tbody>
           </table>
         </section>
@@ -103,14 +121,24 @@
         <section id="guardrails">
           <h2>Guardrails</h2>
           <ul class="checks">
-            <li><div><b>Non-custodial.</b> The server builds calldata and simulates it. Signing and broadcasting happen in your wallet. There is no place to enter a key.</div></li>
-            <li><div><b>Dev buy cap:</b> <span data-fill="cap">5%</span> of total supply. Larger requests are reduced by binary search to the largest amount under the cap, and the preview says so.</div></li>
+            <li><div><b>Non-custodial.</b> The server builds calldata and simulates it. Signing and broadcasting happen in your wallet. There is no place to enter a key.{{#argus}} The only keys on the server belong to agents, stored encrypted.{{/argus}}</div></li>
+            <li><div><b>Dev buy cap:</b> <span data-fill="cap">5%</span> of total supply. Larger requests are reduced to the largest amount under the cap, and the preview says so.</div></li>
+            {{#pons}}
             <li><div><b>Creator tax cap:</b> the pons maximum (<span data-fill="maxTax">10%</span>), read from the factory.</div></li>
             <li><div><b>Pinned economics:</b> the factory's <code>previewLaunchEconomics</code> digest is written into the transaction. A change on the pons side makes the launch revert.</div></li>
             <li><div><b>Whitelist:</b> <code>canLaunch(wallet)</code> is checked at preview (if the wallet is known) and again when the wallet connects. Launches are currently <span data-fill="open">open to any wallet</span>.</div></li>
             <li><div><b>Slippage floors:</b> 1% on the dev buy (the curve is created in the same transaction), 3% on curve buys.</div></li>
-            <li><div><b>Expiry:</b> a prepared launch expires 24 hours after it was created.</div></li>
             <li><div><b>Native pair only.</b> Launches are paired with ETH. Buys are only offered while the token is on its bonding curve.</div></li>
+            {{/pons}}
+            {{#argus}}
+            <li><div><b>Tax cap:</b> the Argus maximum (<span data-fill="maxTax">10%</span> per leg), read from the portal. Both legs at 0 is rejected, as Argus requires.</div></li>
+            <li><div><b>Split check:</b> creator + burn + holders + liquidity must equal 100%. A holders share is refused unless the wallet is registered by Argus (read from the Argus launch config before simulating).</div></li>
+            <li><div><b>Terms re-read before signing:</b> the portal's parameters, the token implementation and the hook code are hashed at preview and checked again when you connect. If Argus changed them, you are told.</div></li>
+            <li><div><b>Predicted address confirmed:</b> the dry run must return the same token address Claudeploy computed, or the launch is refused.</div></li>
+            <li><div><b>Slippage floor:</b> 3% on buys. Approvals are exact for the dev buy and one-time for Permit2.</div></li>
+            <li><div><b>USDC pair only.</b> Launches are quoted in USDC, the native currency of Arc.</div></li>
+            {{/argus}}
+            <li><div><b>Expiry:</b> a prepared launch expires 24 hours after it was created.</div></li>
           </ul>
         </section>
 
@@ -118,35 +146,52 @@
           <h2>Network &amp; contracts</h2>
           <table class="params">
             <tbody>
-              <tr><th>Network</th><td><span data-fill="network">Robinhood Chain</span> · chain id <span data-fill="chainId">4663</span></td></tr>
+              <tr><th>Venue</th><td>{{VENUE_NAME}} · <a href="{{VENUE_DOCS}}" target="_blank" rel="noopener">docs</a></td></tr>
+              <tr><th>Network</th><td><span data-fill="network">{{CHAIN_NAME}}</span> · chain id <span data-fill="chainId">{{CHAIN_ID}}</span> · gas in {{#pons}}ETH{{/pons}}{{#argus}}USDC{{/argus}}</td></tr>
               <tr><th>RPC</th><td class="mono" data-fill="rpc">…</td></tr>
               <tr><th>Explorer</th><td class="mono" data-fill="explorer">…</td></tr>
+              {{#pons}}
               <tr><th>pons v2 factory</th><td class="mono" data-fill="factory">…</td></tr>
               <tr><th>Launch &amp; buy router</th><td class="mono" data-fill="router">…</td></tr>
               <tr><th>Supply per launch</th><td><span data-fill="supply">…</span> tokens</td></tr>
               <tr><th>Launch fee</th><td><span data-fill="fee">…</span> ETH</td></tr>
-              <tr><th>Graduates at</th><td><span data-fill="grad">…</span> ETH raised on the curve</td></tr>
+              <tr><th>Graduates at</th><td><span data-fill="gradValue">…</span> ETH raised on the curve</td></tr>
+              {{/pons}}
+              {{#argus}}
+              <tr><th>Argus portal</th><td class="mono" data-fill="portal">…</td></tr>
+              <tr><th>Uniswap v4 PoolManager</th><td class="mono" data-fill="poolManager">…</td></tr>
+              <tr><th>Universal Router</th><td class="mono" data-fill="router">…</td></tr>
+              <tr><th>Permit2</th><td class="mono" data-fill="permit2">…</td></tr>
+              <tr><th>USDC</th><td class="mono" data-fill="usdc">…</td></tr>
+              <tr><th>Supply per launch</th><td><span data-fill="supply">…</span> tokens</td></tr>
+              <tr><th>Opens at</th><td>$2,500 market cap</td></tr>
+              <tr><th>Liquidity locks at</th><td>$45,000 market cap</td></tr>
+              <tr><th>Pool fee</th><td>1%, plus the token's own tax on each leg</td></tr>
+              <tr><th>Tokens launched on Argus</th><td data-fill="tokensOnVenue">…</td></tr>
+              {{/argus}}
             </tbody>
           </table>
-          <p class="muted small" style="margin-top:12px">Addresses are read from the running server, so a pons contract upgrade shows up here as soon as the server is reconfigured. pons documents its contracts at <a href="https://docs.ponsfamily.com/docs/v2" target="_blank" rel="noopener">docs.ponsfamily.com</a>.</p>
+          <p class="muted small" style="margin-top:12px">Addresses are read from the running server, so a contract upgrade shows up here as soon as the server is reconfigured. {{VENUE_NAME}} documents its contracts at <a href="{{VENUE_DOCS}}" target="_blank" rel="noopener">{{VENUE_DOCS}}</a>.</p>
         </section>
 
         <section id="api">
           <h2>Public API</h2>
           <p class="muted">The signing page and this site use a small JSON API. It is read-only except for the two calls the signing page makes.</p>
           <pre>GET  /api/health              liveness
-GET  /api/terms               live pons terms, chain and contract addresses
+GET  /api/terms               live {{VENUE_SHORT}} terms, chain and contract addresses
 GET  /api/launches?limit=20   tokens launched through Claudeploy that are live
 GET  /api/tokens              same list enriched with price, market cap, progress
 GET  /api/launch/:id          status of one launch or buy
 POST /api/launch/:id/bind     { wallet }  simulate from this wallet, return the unsigned tx
 POST /api/launch/:id/tx       { hash }    record the signed transaction hash
+GET  /api/agent/:token        public state of a token's agent
 POST /mcp                     the MCP endpoint Claude talks to</pre>
         </section>
 
         <section id="changelog">
           <h2>Changelog</h2>
-          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools. Launch and dev buy in one transaction through the pons launch-and-buy router. Predicted contract address on the signing page. Dev buy cap, pinned economics, whitelist check. Tokens page with live curve data.</p>
+          <p><b>0.2.0</b> <span class="muted">· two venues.</span> Claudeploy now runs on Argus (Arc) as well as pons (Robinhood Chain); each deployment serves one. On Argus: launch with fixed buy/sell tax and split, dev buy through the portal, hook salt mined locally, predicted token/splitter/hook, buys through the Uniswap v4 Universal Router with Permit2, and agents that launch their own token and live off the creator share.</p>
+          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools. Launch and dev buy in one transaction through the pons launch-and-buy router. Predicted contract address on the signing page. Dev buy cap, pinned economics, whitelist check. Tokens page with live curve data. Agents with handover of the creator fees.</p>
         </section>
       </article>
     </div>
