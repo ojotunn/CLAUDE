@@ -1,9 +1,9 @@
 // Configuracao do Claudeploy: venue (pons ou Argus), rede, contratos e limites.
-// Um processo serve UM venue, escolhido por VENUE=pons|argus. Cada deploy tem
+// Um processo serve UM venue, escolhido por VENUE=argus|pons (padrao: argus). Cada deploy tem
 // o seu DATA_DIR, porque os registros de um venue nao fazem sentido no outro.
 import path from 'node:path';
 
-export const VENUE = process.env.VENUE === 'argus' ? 'argus' : 'pons';
+export const VENUE = process.env.VENUE === 'pons' ? 'pons' : 'argus';
 
 // ---------------------------------------------------------------------------
 // pons v2 na Robinhood Chain.
@@ -103,6 +103,3 @@ export const LINKS = {
 export const OFFICIAL_TOKEN = /^0x[0-9a-fA-F]{40}$/.test(process.env.OFFICIAL_TOKEN || '')
   ? { address: process.env.OFFICIAL_TOKEN, symbol: (process.env.OFFICIAL_SYMBOL || 'CLAUDEPLOY').replace(/^\$/, '').toUpperCase() }
   : null;
-// Outro deploy do Claudeploy (o outro venue), para o site apontar. Ex.: no
-// deploy da pons, OTHER_VENUE_URL=https://arc.claudeploy.fun.
-export const OTHER_VENUE_URL = process.env.OTHER_VENUE_URL || null;

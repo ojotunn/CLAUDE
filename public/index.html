@@ -191,7 +191,7 @@
         const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
         box.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr><th>Token</th><th>Contract</th><th>Deployer</th><th>When</th></tr></thead><tbody>' +
           launches.map((l) => `<tr><td><b>${esc(l.name)}</b> <span class="muted">$${esc(l.symbol)}</span></td>` +
-            `<td class="addr"><a href="${esc(l.links.venue || l.links.pons)}" target="_blank" rel="noopener">${short(l.token)}</a></td>` +
+            `<td class="addr"><a href="${esc(l.links.venue)}" target="_blank" rel="noopener">${short(l.token)}</a></td>` +
             `<td class="addr">${short(l.deployer)}${l.byAgent ? ' <span class="small muted">(agent)</span>' : ''}</td><td class="muted">${new Date(l.confirmedAt).toLocaleDateString('en-US')}</td></tr>`).join('') +
           '</tbody></table></div>';
       } catch { box.innerHTML = '<div class="empty">Could not load launches.</div>'; }

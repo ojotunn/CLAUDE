@@ -68,7 +68,7 @@
       const parts = [];
       if (t.officialToken) {
         const a = t.officialToken.address;
-        parts.push(`<a class="navtoken" href="${esc(t.officialToken.venue || t.officialToken.pons)}" target="_blank" rel="noopener" title="${esc(a)}">$${esc(t.officialToken.symbol)} <span class="mono">${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</span></a><button class="navcopy" data-copy="${esc(a)}" title="Copy contract address">copy</button>`);
+        parts.push(`<a class="navtoken" href="${esc(t.officialToken.venue)}" target="_blank" rel="noopener" title="${esc(a)}">$${esc(t.officialToken.symbol)} <span class="mono">${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</span></a><button class="navcopy" data-copy="${esc(a)}" title="Copy contract address">copy</button>`);
       }
       if (t.links?.x) parts.push(`<a class="navx" href="${esc(t.links.x)}" target="_blank" rel="noopener" aria-label="X">${X_ICON}</a>`);
       extra.innerHTML = parts.join('');
@@ -84,7 +84,7 @@
     const fv = document.getElementById('footVenue');
     if (fv && t.venue) {
       fv.innerHTML = [`<a href="${esc(t.venue.docs)}" target="_blank" rel="noopener">${esc(t.venue.name)} docs</a>`,
-        t.venue.otherVenueUrl && `<a href="${esc(t.venue.otherVenueUrl)}">Claudeploy on ${esc(t.venue.id === 'argus' ? 'pons' : 'Argus')}</a>`].filter(Boolean).join(' ');
+        ].filter(Boolean).join(' ');
     }
     const fine = document.getElementById('footFine');
     if (fine && t.venue) fine.textContent += ` Claudeploy is not affiliated with ${t.venue.name}.`;

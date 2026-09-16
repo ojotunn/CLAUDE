@@ -31,7 +31,7 @@ before(async () => {
   base = `http://127.0.0.1:${port}`;
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeploy-test-'));
   child = spawn(process.execPath, ['src/server.js'], {
-    env: { ...process.env, PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir, AGENT_SECRET: 'test-secret-for-agents-0123456789', ANTHROPIC_API_KEY: '' },
+    env: { ...process.env, VENUE: 'pons', PORT: String(port), PUBLIC_URL: base, DATA_DIR: dataDir, AGENT_SECRET: 'test-secret-for-agents-0123456789', ANTHROPIC_API_KEY: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '';

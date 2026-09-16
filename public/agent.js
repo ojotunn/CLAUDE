@@ -7,7 +7,7 @@
   const esc = window.siteEsc;
   const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
   const fmt = (n, d = 4) => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: d });
-  const U = () => (a && a.unit) || 'ETH';
+  const U = () => (a && a.unit) || '';
   const amt = (x) => esc(x.amount ?? x.eth);
   let a = null, session = null, account = null, provider = null, busy = false, msg = null, manageOpen = false;
   try { session = localStorage.getItem(`cd-session-${token.toLowerCase()}`); } catch {}
@@ -95,7 +95,7 @@
       <div class="avatar">${a.avatar ? `<img src="${esc(a.avatar)}" alt="">` : initials}</div>
       <div style="flex:1;min-width:220px">
         <div class="big">${esc(a.name)} <span class="muted" style="font-size:18px">$${esc(a.symbol)}</span> <span class="chip">agent</span></div>
-        <div class="sub">wallet <a class="mono" href="${esc(a.links.agentWallet)}" target="_blank" rel="noopener">${short(a.agent)}</a>${a.token ? ` · <a href="${esc(a.links.venue || a.links.pons)}" target="_blank" rel="noopener">token on ${esc(a.venue || 'pons')}</a>` : ''}${a.permanentRole ? ' · <span class="chip">creator on-chain</span>' : ''}</div>
+        <div class="sub">wallet <a class="mono" href="${esc(a.links.agentWallet)}" target="_blank" rel="noopener">${short(a.agent)}</a>${a.token ? ` · <a href="${esc(a.links.venue)}" target="_blank" rel="noopener">token on ${esc(a.venue || 'the launchpad')}</a>` : ''}${a.permanentRole ? ' · <span class="chip">creator on-chain</span>' : ''}</div>
         ${a.vibe ? `<div class="sub" style="margin-top:4px">“${esc(a.vibe)}”</div>` : ''}
       </div>
       ${statusChip()}
@@ -124,7 +124,7 @@
       ${Number(a.stats.salaryEth) ? `<div class="stat"><div class="v">${fmt(a.stats.salaryEth)}</div><div class="k">${U()} paid to the creator</div></div>` : ''}${Number(a.stats.forwardedEth) ? `<div class="stat"><div class="v">${fmt(a.stats.forwardedEth)}</div><div class="k">${U()} forwarded to the owner</div></div>` : ''}
       <div class="stat"><div class="v">${a.stats.cycles}</div><div class="k">cycles run</div></div>
     </div>
-    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${esc(a.split)}.${a.rules.collectOnly ? ' <b>Collect-only mode: it spends nothing for now.</b>' : ''}${a.rules.dipBuyPct ? ` If the price drops ${a.rules.dipBuyPct}% between cycles, it spends the reserve buying and burning.` : ''} No approvals, no caps. The agent can only talk to ${esc(a.venue || 'pons')}, the burn address, holders and the creator.${a.pendingRules ? ` <b>A new split was proposed from Claude and waits for the creator to apply it.</b>` : ''}</p>`;
+    <p class="sub">Every cycle, whatever is above the gas reserve gets split: ${esc(a.split)}.${a.rules.collectOnly ? ' <b>Collect-only mode: it spends nothing for now.</b>' : ''}${a.rules.dipBuyPct ? ` If the price drops ${a.rules.dipBuyPct}% between cycles, it spends the reserve buying and burning.` : ''} No approvals, no caps. The agent can only talk to ${esc(a.venue || 'the launchpad')}, the burn address, holders and the creator.${a.pendingRules ? ` <b>A new split was proposed from Claude and waits for the creator to apply it.</b>` : ''}</p>`;
 
     if (a.voice) {
       h += `<div class="card" style="margin:18px 0">

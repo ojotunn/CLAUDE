@@ -17,8 +17,8 @@
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const hexChain = () => '0x' + Number(terms.chain.id).toString(16);
-  const unit = () => rec?.unit || terms?.unit || 'ETH';
-  const venue = () => terms?.venue?.name || 'pons';
+  const unit = () => rec?.unit || terms?.unit || '';
+  const venue = () => terms?.venue?.name || 'the launchpad';
 
   async function api(path, body) {
     const res = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : undefined);
@@ -155,7 +155,7 @@
       return [
         ['Token', `<b>${esc(s.name)}</b> <span class="sub">$${esc(s.symbol)}</span>`],
         ['Contract', `<span class="mono">${esc(s.token)}</span>`],
-        ['You spend', `${esc(s.spend?.amount || s.spend?.eth)} ${esc(u)}`],
+        ['You spend', `${esc(s.spend?.amount)} ${esc(u)}`],
         ['You receive', `about ${esc(rec.predicted?.tokensOut || s.spend?.tokens)} ${esc(s.symbol)}`],
         ['Progress', s.graduationProgress != null ? `${s.graduationProgress}% to ${esc((s.graduationLabel || 'graduation').split(' (')[0])}` : '—'],
         ...(s.steps ? [['Signatures', esc(s.steps)]] : []),
@@ -180,14 +180,14 @@
       const a = rec.agent || s.agent || {};
       rows.push(['Launched by', `the agent wallet <span class="mono">${esc(a.address || a.wallet)}</span> (it becomes the creator and keeps the creator share)`]);
       if (s.agent?.vibe) rows.push(['Personality', esc(s.agent.vibe)]);
-      if (s.devBuy) rows.push(['Dev buy', `${esc(s.devBuy.amount || s.devBuy.eth)} ${esc(u)} → about ${esc(rec.predicted?.tokensOut || s.devBuy.tokens)} ${esc(s.symbol)} (${esc(s.devBuy.shareOfSupply)} of supply), bought by the agent`]);
+      if (s.devBuy) rows.push(['Dev buy', `${esc(s.devBuy.amount)} ${esc(u)} → about ${esc(rec.predicted?.tokensOut || s.devBuy.tokens)} ${esc(s.symbol)} (${esc(s.devBuy.shareOfSupply)} of supply), bought by the agent`]);
       rows.push(['You send', `<b>${esc(a.budget ? `${a.budget} ${u}` : (s.agent?.send || `dev buy plus gas in ${u}`))}</b> to the agent wallet (dev buy plus gas for the launch and the first cycles)`]);
       return rows;
     }
     rows.push(['Fees go to', rec.creatorFeeRecipient ? `<span class="mono">${esc(rec.creatorFeeRecipient)}</span>` : esc(s.creatorFeeRecipient)]);
-    if (s.devBuy) rows.push(['Dev buy', `${esc(s.devBuy.amount || s.devBuy.eth)} ${esc(u)} → about ${esc(rec.predicted?.tokensOut || s.devBuy.tokens)} ${esc(s.symbol)} (${esc(s.devBuy.shareOfSupply)} of supply)`]);
-    if (Number(s.cost?.launchFee ?? s.cost?.launchFeeEth) > 0) rows.push(['Launch fee', `${esc(s.cost?.launchFee ?? s.cost?.launchFeeEth)} ${esc(u)} (${esc(venue())})`]);
-    rows.push(['Total', `<b>${esc(s.cost?.total ?? s.cost?.totalEth)} ${esc(u)}</b> + gas${terms?.venue?.id === 'argus' ? ' (paid in USDC)' : ''}`]);
+    if (s.devBuy) rows.push(['Dev buy', `${esc(s.devBuy.amount)} ${esc(u)} → about ${esc(rec.predicted?.tokensOut || s.devBuy.tokens)} ${esc(s.symbol)} (${esc(s.devBuy.shareOfSupply)} of supply)`]);
+    if (Number(s.cost?.launchFee) > 0) rows.push(['Launch fee', `${esc(s.cost?.launchFee)} ${esc(u)} (${esc(venue())})`]);
+    rows.push(['Total', `<b>${esc(s.cost?.total)} ${esc(u)}</b> + gas${terms?.venue?.id === 'argus' ? ' (paid in USDC)' : ''}`]);
     return rows;
   }
 
@@ -209,7 +209,7 @@
         <div class="ca" id="ca">${esc(rec.token)}</div>
         <div class="actions">
           <button class="sm ghost" data-copy="#ca">Copy address</button>
-          <a class="btn sm accent" href="${esc(rec.links.venue || rec.links.pons)}" target="_blank" rel="noopener">Open on ${esc(venue())}</a>
+          <a class="btn sm accent" href="${esc(rec.links.venue)}" target="_blank" rel="noopener">Open on ${esc(venue())}</a>
           ${isAgentLaunch && rec.agent?.page ? `<a class="btn sm ghost" href="${esc(rec.agent.page)}">Agent page</a>` : ''}
           <a class="btn sm ghost" href="${esc(rec.links.explorerToken)}" target="_blank" rel="noopener">Explorer</a>
           <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
@@ -238,7 +238,7 @@
     if (rec.status === 'done') {
       html += `<div class="notice ok">Buy filled: ${esc(rec.tokensOut)} ${esc(rec.summary?.symbol)}.</div>
         <div class="actions">
-          <a class="btn sm accent" href="${esc(rec.links.venue || rec.links.pons)}" target="_blank" rel="noopener">Open on ${esc(venue())}</a>
+          <a class="btn sm accent" href="${esc(rec.links.venue)}" target="_blank" rel="noopener">Open on ${esc(venue())}</a>
           <a class="btn sm ghost" href="${esc(rec.links.explorerTx)}" target="_blank" rel="noopener">Transaction</a>
         </div>`;
       app.innerHTML = html;
@@ -267,7 +267,7 @@
       html += `<hr class="soft">`;
       if (account && rec.wallet && account.toLowerCase() === rec.wallet.toLowerCase()) {
         const pre = rec.pre || [];
-        html += `<div class="sub">Connected: <span class="mono">${esc(account)}</span> · balance ${esc(rec.funding?.balance ?? rec.funding?.balanceEth)} ${esc(u)}</div>`;
+        html += `<div class="sub">Connected: <span class="mono">${esc(account)}</span> · balance ${esc(rec.funding?.balance)} ${esc(u)}</div>`;
         if (pre.length) html += `<div class="sub" style="margin-top:6px">${pre.length + 1} signatures: ${pre.map((p) => esc(p.label || 'approval')).join(', ')}, then the ${isLaunch ? 'launch' : 'swap'}. The approvals are one-time.</div>`;
         if (step) html += `<div class="notice">Step ${step.n} of ${step.total}: ${esc(step.label)}. Confirm it in your wallet.</div>`;
         html += `<div class="actions">

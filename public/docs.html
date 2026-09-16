@@ -34,7 +34,7 @@
       <article>
         <section id="connect">
           <h2>Connect to Claude</h2>
-          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer. This deployment launches on <b>{{VENUE_NAME}}</b> ({{CHAIN_NAME}}).{{#pons}} There is a separate Claudeploy for Argus on Arc.{{/pons}}{{#argus}} There is a separate Claudeploy for pons on Robinhood Chain.{{/argus}}</p>
+          <p class="muted">Claudeploy is a remote MCP server. Claude talks to it over HTTPS; nothing is installed on your computer. This deployment launches on <b>{{VENUE_NAME}}</b> ({{CHAIN_NAME}}).</p>
           <div class="urlbox"><code data-fill="mcpUrl">…/mcp</code><button class="sm ghost" data-copy="[data-fill=mcpUrl]">Copy</button></div>
           <ol class="steps">
             <li><div><b>Customize → Connectors</b><p>In Claude on the web, in the desktop app, or in Cowork.</p></div></li>
@@ -190,8 +190,9 @@ POST /mcp                     the MCP endpoint Claude talks to</pre>
 
         <section id="changelog">
           <h2>Changelog</h2>
-          <p><b>0.2.0</b> <span class="muted">· two venues.</span> Claudeploy now runs on Argus (Arc) as well as pons (Robinhood Chain); each deployment serves one. On Argus: launch with fixed buy/sell tax and split, dev buy through the portal, hook salt mined locally, predicted token/splitter/hook, buys through the Uniswap v4 Universal Router with Permit2, and agents that launch their own token and live off the creator share.</p>
-          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools. Launch and dev buy in one transaction through the pons launch-and-buy router. Predicted contract address on the signing page. Dev buy cap, pinned economics, whitelist check. Tokens page with live curve data. Agents with handover of the creator fees.</p>
+          {{#argus}}<p><b>0.2.0</b> <span class="muted">· Argus on Arc.</span> Launch with fixed buy/sell tax and split, dev buy through the Argus portal, hook salt mined locally, predicted token, splitter and hook before signing, buys through the Uniswap v4 Universal Router with Permit2, and agents that launch their own token and live off the creator share of the tax.</p>{{/argus}}{{#pons}}<p><b>0.2.0</b> <span class="muted">· venue layer.</span> The same code now serves more than one launchpad.</p>
+          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools. Launch and dev buy in one transaction through the pons launch-and-buy router. Predicted contract address on the signing page. Dev buy cap, pinned economics, whitelist check. Tokens page with live curve data. Agents with handover of the creator fees.</p>{{/pons}}
+          <p><b>0.1.0</b> <span class="muted">· first release.</span> Seven tools, predicted contract address on the signing page, dev buy cap, tokens page with live data, agents.</p>
         </section>
       </article>
     </div>

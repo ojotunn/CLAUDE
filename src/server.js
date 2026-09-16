@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL, OFFICIAL_TOKEN, TOKEN_URL, VENUE, QUOTE, OTHER_VENUE_URL } from './config.js';
+import { PORT, PUBLIC_URL, CHAIN, CONTRACTS, LIMITS, APP_NAME, VERSION, DATA_DIR, LINKS, REPO_URL, OFFICIAL_TOKEN, TOKEN_URL, VENUE, QUOTE } from './config.js';
 import { createMcpServer } from './mcp.js';
 import * as chain from './chain.js';
 import * as launches from './launches.js';
@@ -96,7 +96,7 @@ api.get('/terms', async (_req, res) => {
     ...s,
     app: APP_NAME,
     venueName: s.venue,
-    venue: { id: VENUE, name: chain.NAME, short: chain.SHORT, market: chain.MARKET, docs: chain.DOCS_URL, tokenUrl: TOKEN_URL, supportsHandover: chain.supportsHandover, agentMustLaunch: chain.agentMustLaunch, otherVenueUrl: OTHER_VENUE_URL },
+    venue: { id: VENUE, name: chain.NAME, short: chain.SHORT, market: chain.MARKET, docs: chain.DOCS_URL, tokenUrl: TOKEN_URL, supportsHandover: chain.supportsHandover, agentMustLaunch: chain.agentMustLaunch },
     unit: QUOTE.symbol,
     chain: { id: CHAIN.id, name: CHAIN.name, rpc: CHAIN.rpc, explorer: CHAIN.explorer, isTestnet: CHAIN.isTestnet, native: CHAIN.native },
     contracts: CONTRACTS,
@@ -194,7 +194,6 @@ const VARS = {
   VENUE: VENUE, VENUE_NAME: chain.NAME, VENUE_SHORT: chain.SHORT, CHAIN_NAME: CHAIN.name, CHAIN_ID: String(CHAIN.id),
   UNIT: QUOTE.symbol, MARKET: chain.MARKET, VENUE_DOCS: chain.DOCS_URL, TOKEN_SITE: TOKEN_URL.replace('/{token}', '').replace('{token}', ''),
   EXAMPLE_DEV_BUY: VENUE === 'argus' ? '20 USDC' : '0.05 ETH', EXAMPLE_BUY: VENUE === 'argus' ? '10 USDC' : '0.01 ETH',
-  OTHER_VENUE_URL: OTHER_VENUE_URL || '', OTHER_VENUE_NAME: VENUE === 'argus' ? 'pons (Robinhood Chain)' : 'Argus (Arc)',
 };
 // Marca da Uniswap (svg oficial do repositorio brand-assets, sem cores) para a faixa "built on".
 try { VARS.UNISWAP_ICON = fs.readFileSync(path.join(publicDir, 'brand', 'uniswap-mark.svg'), 'utf8'); } catch { VARS.UNISWAP_ICON = ''; }

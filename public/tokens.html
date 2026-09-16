@@ -53,18 +53,15 @@
         const ag = document.getElementById('sAgents'); if (ag) ag.textContent = tokens.filter((t) => t.agent?.status === 'active').length;
         document.getElementById('sGrad').textContent = totals.graduated;
         if (!tokens.length) { list.innerHTML = '<div class="empty">Nothing launched yet. Add Claudeploy to Claude and be the first.</div>'; return; }
-        const head = argus
-          ? '<th>Token</th><th>Price (USD)</th><th>Market cap</th><th>Tax</th><th>Bond</th><th>Creator</th><th>Launched</th>'
-          : '<th>Token</th><th>Price (ETH)</th><th>Market cap (ETH)</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th>';
+        const head = '{{#argus}}<th>Token</th><th>Price (USD)</th><th>Market cap</th><th>Tax</th><th>Bond</th><th>Creator</th><th>Launched</th>{{/argus}}{{#pons}}<th>Token</th><th>Price ({{UNIT}})</th><th>Market cap ({{UNIT}})</th><th>Raised</th><th>Graduation</th><th>Deployer</th><th>Launched</th>{{/pons}}';
         list.innerHTML = '<div class="tablewrap"><table class="data"><thead><tr>' + head + '</tr></thead><tbody>' +
           tokens.map((t) => {
             const i = t.info;
             const prog = i?.graduationProgress ?? 0;
             const phase = i?.graduated ? (argus ? 'bonded' : 'graduated') : `${fmt(prog, 1)}%`;
-            const nameCell = `<td><a href="${esc(t.links.venue || t.links.pons)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span>${t.agent?.status === 'active' ? ` <a href="/t/${esc(t.token)}" style="font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft)">agent</a>` : ''}<div class="addr small muted">${short(t.token)}</div></td>`;
-            const mid = argus
-              ? `<td class="mono">${i ? '$' + fmt(i.price, 8) : '—'}</td><td class="mono">${i ? '$' + fmt(i.marketCap, 0) : '—'}</td><td class="small">${i ? `${i.buyTaxBps / 100}% / ${i.sellTaxBps / 100}%` : '—'}</td>`
-              : `<td class="mono">${i ? fmt(i.price, 10) : '—'}</td><td class="mono">${i ? fmt(i.marketCap, 3) : '—'}</td><td class="mono">${i ? fmt(i.raised, 4) : '—'} / ${i ? fmt(i.graduatesAt, 1) : '—'}</td>`;
+            const nameCell = `<td><a href="${esc(t.links.venue)}" target="_blank" rel="noopener"><b>${esc(t.name)}</b></a> <span class="muted">$${esc(t.symbol)}</span>${t.agent?.status === 'active' ? ` <a href="/t/${esc(t.token)}" style="font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft)">agent</a>` : ''}<div class="addr small muted">${short(t.token)}</div></td>`;
+            {{#argus}}const mid = `<td class="mono">${i ? '$' + fmt(i.price, 8) : '—'}</td><td class="mono">${i ? '$' + fmt(i.marketCap, 0) : '—'}</td><td class="small">${i ? `${i.buyTaxBps / 100}% / ${i.sellTaxBps / 100}%` : '—'}</td>`;{{/argus}}
+            {{#pons}}const mid = `<td class="mono">${i ? fmt(i.price, 10) : '—'}</td><td class="mono">${i ? fmt(i.marketCap, 3) : '—'}</td><td class="mono">${i ? fmt(i.raised, 4) : '—'} / ${i ? fmt(i.graduatesAt, 1) : '—'}</td>`;{{/pons}}
             return `<tr>${nameCell}${mid}
               <td><div class="bar"><i style="width:${Math.min(100, prog)}%"></i></div><div class="small muted">${phase}</div></td>
               <td class="addr">${short(t.deployer)}${t.byAgent ? ' <span class="small muted">(agent)</span>' : ''}</td>

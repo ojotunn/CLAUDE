@@ -10,8 +10,10 @@ Repositório: https://github.com/ojotunn/CLAUDE
 
 ## Um código, dois deploys
 
-`VENUE=pons` (padrão) ou `VENUE=argus`. Cada processo serve um venue só, com o
-seu `DATA_DIR`. O que muda de um para o outro mora em `src/venues/pons.js` e
+`VENUE=argus` (padrão; é o que está em claudeploy.fun) ou `VENUE=pons`. Cada
+processo serve um venue só, com o seu `DATA_DIR`. O site em modo Argus não cita
+pons nem Ethereum; o venue pons continua no código e no serviço Railway antigo
+(`claudeploy-production.up.railway.app`), sem domínio próprio. O que muda de um para o outro mora em `src/venues/pons.js` e
 `src/venues/argus.js`; `src/chain.js` carrega um deles e o resto do código
 (`launches.js`, `agent.js`, `mcp.js`, `server.js`, páginas) é comum. As páginas
 HTML têm blocos `{{#pons}}…{{/pons}}` / `{{#argus}}…{{/argus}}` e variáveis
